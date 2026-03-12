@@ -65,7 +65,7 @@ app.use(`${api}/user`, authenticateRequest, userRouter);
 
 app.use(`${api}/overview`, authenticateRequest, overviewRouter);
 
-app.use(`${api}/health`, authenticateRequest, healthRouter);
+app.use(`${api}/health`, healthRouter);
 
 app.use(`${api}/profile`, authenticateRequest, profileRouter);
 

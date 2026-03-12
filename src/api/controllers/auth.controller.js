@@ -1,15 +1,18 @@
 import ApiResponse from '../../utils/api_response.js';
 import jwt from 'jsonwebtoken';
-import {User} from '../../models/auth/user.model.js';
-import {createjwtToken} from '../../utils/jwt_helper.js';
+import { User } from '../../models/auth/user.model.js';
+import { createjwtToken } from '../../utils/jwt_helper.js';
 import mongoose from 'mongoose';
-import {generate} from "generate-password";
+import { generate } from "generate-password";
+import { OAuth2Client } from 'google-auth-library'; // IMPORT GOOGLE AUTH
 
+// Initialize the Google OAuth Client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-function generatePassword(){
+function generatePassword() {
     return generate({
         length: 10,
-        uppercase:true,
+        uppercase: true,
         numbers: true
     })
 }
@@ -18,14 +21,20 @@ class AuthController {
     static async google(req, res) {
         const { token } = req.body
 
-
-        if (token === undefined || token == null || token === '') {
+        if (!token) {
             return res.status(400).json(ApiResponse.error('token is required'))
-
         }
+
         try {
-            const data = jwt.decode(token);
-            const { sub, name, email, picture, email_verified } = data
+            // SECURE FIX: Verify the token with Google's servers
+            const ticket = await googleClient.verifyIdToken({
+                idToken: token,
+                audience: process.env.GOOGLE_CLIENT_ID,  // Specify the CLIENT_ID of the app that accesses the backend
+            });
+            
+            // Extract the secure payload
+            const payload = ticket.getPayload();
+            const { sub, name, email, picture, email_verified } = payload;
 
             if (!email_verified)
                 return res.status(400).json(ApiResponse.error("Google account is not verified"))
@@ -34,28 +43,28 @@ class AuthController {
 
             let user;
 
+            // Find user by email
             const existingUser = await User.findOne({ 'email': email }).select("-__v ")
-
             user = existingUser
+            
             let res_message = 'User loggedIn Successfully'
 
             if (existingUser == null) {
-
                 // create new user
-                user = await User.create(
-                    {
-                        google_id: googleUserId,
-                        name,
-                        email,
-                        password: generatePassword(),
-                        image_url: picture,
-                        role: 'user',
-                        status_id: 0,
-                        token: null
-                    }
-                )
+                user = await User.create({
+                    google_id: googleUserId,
+                    name,
+                    email,
+                    password: generatePassword(), // Note: see best practice tip below
+                    image_url: picture,
+                    role: 'user',
+                    status_id: 0,
+                    token: null
+                })
                 res_message = "User created Successfully"
             }
+
+            // Generate your own custom JWT for subsequent API requests
             user.token = await createjwtToken({
                 "id": user._id,
                 "google_id": user.google_id,
@@ -69,11 +78,14 @@ class AuthController {
 
             const updatedUser = await User.findById(user.id).select("-__v -password");
 
+            // Set the token in cookies for web clients
+            res.cookie('token', updatedUser.token, { httpOnly: true });
+
             return res.status(200).json(ApiResponse.success(res_message, updatedUser))
 
         } catch (error) {
-
-            return res.status(400).json(ApiResponse.error(error.message || 'Internal Server Error'))
+            // If the token is fake, expired, or tampered with, googleClient.verifyIdToken throws an error
+            return res.status(401).json(ApiResponse.error('Invalid Google Identity Token'))
         }
     }
 

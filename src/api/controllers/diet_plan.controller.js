@@ -291,9 +291,6 @@ class DietPlanController {
             if (!user)
                 return res.status(400).send(ApiResponse.error(`Unauthorized User with id ${user_id}`))
 
-            /*if (user._id.equals(existingPLan.created_by) === false)
-                return res.status(400).send(ApiResponse.error(`You have not created the plan so can not edit`))
-*/
             existingPLan.created_by = user
 
             if (name && name!=='null')

@@ -27,10 +27,12 @@ const dietPlanSchema = mongoose.Schema({
     water: {
         type: Number,
         required: true,
+        default: 0
     },
     gt_bc: {
         type: Number,
         required: true,
+        default: 0
     },
 }, {timestamps: true});
 

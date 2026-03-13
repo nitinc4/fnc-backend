@@ -13,12 +13,24 @@ async function getDietPlans(healthIssues) {
     else{
         //add diet plan bases on health issues
     }*/
-    const plan = await DietPlan.findOne({name: 'general'});
-
-    if (!plan) {
-        console.log('no general diet plan')
+    
+    if (healthIssues && healthIssues.length > 0) {
+        const issueIds = healthIssues.map(issue => issue._id || issue);
+        const matchingPlans = await DietPlan.find({
+            health_issues: { $in: issueIds }
+        });
+        dietPlans = [...matchingPlans];
     }
-    dietPlans.push(plan)
+
+    if (dietPlans.length === 0) {
+        const plan = await DietPlan.findOne({name: 'general'});
+
+        if (!plan) {
+            console.log('no general diet plan')
+        } else {
+            dietPlans.push(plan)
+        }
+    }
     return dietPlans;
 }
 
@@ -163,7 +175,7 @@ class ProfileController {
 
             const dietPlans = await getDietPlans(healthIssues)
             //get diet plans
-            /*  let dietPlans = []
+            /* let dietPlans = []
              for(let plan of diet_plans){
                  const dietPlan = await DietPlan.findById(plan)
                  if(!dietPlan)

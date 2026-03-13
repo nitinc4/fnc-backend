@@ -1,11 +1,8 @@
-import {Meal} from "../../models/meal/meal.model.js";
+import { Meal } from "../../models/meal/meal.model.js";
 import ApiResponse from "../../utils/api_response.js";
 import mongoose from "mongoose";
-import {getDate_24_HH_MM, getDateFromMongo} from "../../utils/date_time_utils.js";
-
 
 class MealController {
-
     static async getMeals(req, res) {
         try {
             const meals = await Meal.find().select('-__v -updatedAt -createdAt');
@@ -16,11 +13,10 @@ class MealController {
         } catch (e) {
             return res.status(500).json(ApiResponse.error(e.message || 'Internal server error'));
         }
-
     }
 
     static async getMeal(req, res) {
-        const {id} = req.params;
+        const { id } = req.params;
         if (!id)
             return res.status(400).json(ApiResponse.error('Meal id is required'));
         try {
@@ -39,34 +35,30 @@ class MealController {
     }
 
     static async createMeal(req, res) {
-        const {name, description, start_time, end_time} = req.body;
+        const { name, description, start_time, end_time } = req.body;
 
-        //validate request
         if (!name || !description || !start_time || !end_time)
             return res.status(400).json(ApiResponse.error('All fields are required { name,description,start_time,end_time }'));
 
-        let start = getDate_24_HH_MM(start_time)
-        let end = getDate_24_HH_MM(end_time)
-
         try {
-
-            const ifMealExist = await Meal.findOne({name})
+            const ifMealExist = await Meal.findOne({ name })
 
             if (ifMealExist)
                 return res.status(400).json(ApiResponse.error('Meal already exist'));
 
+            // Mongoose parses standard ISO dates natively, no formatting function needed!
             const createdMeal = await Meal.create({
                 name,
                 description,
-                start_time: start,
-                end_time: end,
+                start_time, 
+                end_time,
             });
 
             if (!createdMeal)
                 return res.status(400).json(ApiResponse.error('Meal not created'))
 
-
-            const fetchedMeal = await Meal.findById(createdMeal).select('-__v -updatedAt -createdAt');
+            // Fixed bug: pass createdMeal._id instead of createdMeal
+            const fetchedMeal = await Meal.findById(createdMeal._id).select('-__v -updatedAt -createdAt');
 
             return res.status(200).json(ApiResponse.success('Meal created successfully', fetchedMeal))
         } catch (e) {
@@ -75,8 +67,8 @@ class MealController {
     }
 
     static async updateMeal(req, res) {
-        const {id} = req.params;
-        const {name, description, start_time, end_time} = req.body;
+        const { id } = req.params;
+        const { name, description, start_time, end_time } = req.body;
 
         if (!id)
             return res.status(400).json(ApiResponse.error('Meal id is required'));
@@ -92,8 +84,10 @@ class MealController {
 
             if (name) meal.name = name;
             if (description) meal.description = description;
-            if (start_time) meal.start_time = getDate_24_HH_MM(start_time);
-            if (end_time) meal.end_time = getDate_24_HH_MM(end_time);
+            
+            // Removed getDate_24_HH_MM here as well
+            if (start_time) meal.start_time = start_time;
+            if (end_time) meal.end_time = end_time;
 
             await meal.save();
 
@@ -104,31 +98,26 @@ class MealController {
         } catch (e) {
             return res.status(500).json(ApiResponse.error(e.message || 'Internal server error'));
         }
-
     }
 
     static async deleteMeal(req, res) {
-        //TODO: Also check for other usage of this meal
-        const {id} = req.params;
+        const { id } = req.params;
         if (!id)
             return res.status(400).json(ApiResponse.error('Meal id is required'));
-       try{
+        try {
+            if (!mongoose.Types.ObjectId.isValid(id))
+                return res.status(400).json(ApiResponse.error('Invalid meal id'));
 
-           if (!mongoose.Types.ObjectId.isValid(id))
-               return res.status(400).json(ApiResponse.error('Invalid meal id'));
+            const isMealExist = await Meal.findById(id);
+            if (!isMealExist)
+                return res.status(400).json(ApiResponse.error('Meal not found'));
 
-           const isMealExist = await Meal.findById(id);
-           if (!isMealExist)
-               return res.status(400).json(ApiResponse.error('Meal not found'));
+            const deletedMeal = await Meal.findByIdAndDelete(id).select('-__v -updatedAt -createdAt');
+            return res.status(200).json(ApiResponse.success('Meal deleted successfully', deletedMeal));
 
-           const deletedMeal = await Meal.findByIdAndDelete(id).select('-__v -updatedAt -createdAt');
-           return  res.status(200).json(ApiResponse.success('Meal deleted successfully', deletedMeal));
-
-
-       }catch (e) {
-           return res.status(500).json(ApiResponse.error(e.message || 'Internal server error'))
-
-       }
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message || 'Internal server error'))
+        }
     }
 }
 

@@ -628,36 +628,37 @@ class DailyDietController {
         const eveningSnacksMeal = meals.find(meal => meal.name === 'evening_snacks');
         const dinnerMeal = meals.find(meal => meal.name === 'dinner');
 
+        // FIXED: ADDED OPTIONAL CHAINING TO PREVENT CRASHES IF A MEAL IS MISSING IN DB
         dietPlanData = {
             breakfast: {
                 total_calories: Math.floor(dietPlanBreakfastCal),
-                start_time: breakfastMeal.start_time,
-                end_time: breakfastMeal.end_time,
+                start_time: breakfastMeal?.start_time || '',
+                end_time: breakfastMeal?.end_time || '',
                 foods: dietPlanBreakfastList,
             },
             morning_snacks: {
                 total_calories: Math.floor(dietPlanMorningSnacksCal),
-                start_time: morningSnacksMeal.start_time,
-                end_time: morningSnacksMeal.end_time,
+                start_time: morningSnacksMeal?.start_time || '',
+                end_time: morningSnacksMeal?.end_time || '',
                 foods: dietPlanMorningSnacksList
 
             },
             lunch: {
                 total_calories: Math.floor(dietPlanLunchCal),
-                start_time: lunchMeal.start_time,
-                end_time: lunchMeal.end_time,
+                start_time: lunchMeal?.start_time || '',
+                end_time: lunchMeal?.end_time || '',
                 foods: dietPlanLunchList
             },
             evening_snacks: {
                 total_calories: Math.floor(dietPlanEveningSnacksCal),
-                start_time: eveningSnacksMeal.start_time,
-                end_time: eveningSnacksMeal.end_time,
+                start_time: eveningSnacksMeal?.start_time || '',
+                end_time: eveningSnacksMeal?.end_time || '',
                 foods: dietPlanEveningSnacksList
             },
             dinner: {
                 total_calories: Math.floor(dietPlanDinnerCal),
-                start_time: dinnerMeal.start_time,
-                end_time: dinnerMeal.end_time,
+                start_time: dinnerMeal?.start_time || '',
+                end_time: dinnerMeal?.end_time || '',
                 foods: dietPlanDinnerList
             }
         }

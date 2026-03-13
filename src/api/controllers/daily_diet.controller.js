@@ -40,12 +40,6 @@ class DailyDietController {
                 return res.status(400).json(ApiResponse.error('User not found'))
             }
 
-            if (water === null || water === undefined || water === 'null')
-                return res.status(400).json(ApiResponse.error('{water} is required'))
-                
-            if (gt_bc === null || gt_bc === undefined || gt_bc === 'null')
-                return res.status(400).json(ApiResponse.error('{gt_bc} is required'))
-
             const checkExisting = await DailyDiet.findOne({
                 created_by: user_id,
                 createdAt: {
@@ -60,6 +54,9 @@ class DailyDietController {
                 return
             }
 
+            // SAFE DEFAULTS: If not provided during creation (e.g. from adding food), default to 0
+            let safeWater = (water !== undefined && water !== null && water !== 'null') ? water : 0;
+            let safeGtBc = (gt_bc !== undefined && gt_bc !== null && gt_bc !== 'null') ? gt_bc : 0;
 
             let breakfastList = []
             if (breakfast) {
@@ -169,8 +166,8 @@ class DailyDietController {
                 lunch: lunchList,
                 evening_snacks: eveningSnacksList,
                 dinner: dinnerList,
-                water: water,
-                gt_bc: gt_bc,
+                water: safeWater,
+                gt_bc: safeGtBc,
                 createdAt: targetDate
             });
 

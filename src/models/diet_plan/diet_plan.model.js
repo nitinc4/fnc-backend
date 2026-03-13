@@ -28,6 +28,10 @@ const dietPlanSchema = mongoose.Schema({
         type: Number,
         required: true,
     },
+    gt_bc: {
+        type: Number,
+        required: true,
+    },
 }, {timestamps: true});
 
 export const DietPlan = mongoose.model("DietPlan", dietPlanSchema);

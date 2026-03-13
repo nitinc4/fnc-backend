@@ -10,6 +10,10 @@ const dailyDietSchema = mongoose.Schema({
         type: Number,
         required: true,
     },
+    gt_bc: {
+        type: Number,
+        required: true,
+    },
     breakfast: [FoodQuantitySchema],
     morning_snacks: [FoodQuantitySchema],
     lunch: [FoodQuantitySchema],

@@ -51,7 +51,7 @@ class DietPlanController {
 
         const {
             user_id, name, description, start_date, end_date, health_issues, breakfast, morning_snacks, lunch,
-            evening_snacks, dinner,water
+            evening_snacks, dinner, water, gt_bc
         } = req.body
 
         if (!user_id)
@@ -95,8 +95,11 @@ class DietPlanController {
             if (!Array.isArray(dinner))
                 return res.status(400).send(ApiResponse.error('{ dinner } must be an array'))
 
-        if (!water)
+        if (water === null || water === undefined)
             return res.status(400).send(ApiResponse.error('{ water } is required'))
+            
+        if (gt_bc === null || gt_bc === undefined)
+            return res.status(400).send(ApiResponse.error('{ gt_bc } is required'))
 
         if (!breakfast && !morning_snacks && !lunch && !evening_snacks && !dinner)
             return res.status(400).send(ApiResponse.error('At least one meal plan is required { breakfast, morning_snacks, lunch, evening_snacks, dinner }'))
@@ -236,7 +239,8 @@ class DietPlanController {
                     lunch: lunchList,
                     evening_snacks: eveningSnacksList,
                     dinner: dinnerList,
-                    water: water
+                    water: water,
+                    gt_bc: gt_bc
                 }
             )
 
@@ -268,7 +272,9 @@ class DietPlanController {
             morning_snacks,
             lunch,
             evening_snacks,
-            dinner
+            dinner,
+            water,
+            gt_bc
         } = req.body
 
         if (!user_id)
@@ -301,6 +307,12 @@ class DietPlanController {
 
             if (end_date && end_date!=='null')
                 existingPLan.end_date = getDate_YYYY_MM_DD(end_date)
+                
+            if (water !== undefined && water !== null && water !== 'null')
+                existingPLan.water = water
+                
+            if (gt_bc !== undefined && gt_bc !== null && gt_bc !== 'null')
+                existingPLan.gt_bc = gt_bc
 
             if (health_issues) {
                 if (!Array.isArray(health_issues))

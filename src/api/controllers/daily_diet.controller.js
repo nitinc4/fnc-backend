@@ -29,7 +29,7 @@ class DailyDietController {
 
             const {date} = req.query;
             const {user_id} = req.body;
-            const {water, breakfast, morning_snacks, lunch, evening_snacks, dinner} = req.body;
+            const {water, gt_bc, breakfast, morning_snacks, lunch, evening_snacks, dinner} = req.body;
 
             const user = await User.findById(user_id);
 
@@ -40,9 +40,11 @@ class DailyDietController {
                 return res.status(400).json(ApiResponse.error('User not found'))
             }
 
-            console.log(water)
             if (water === null || water === undefined || water === 'null')
                 return res.status(400).json(ApiResponse.error('{water} is required'))
+                
+            if (gt_bc === null || gt_bc === undefined || gt_bc === 'null')
+                return res.status(400).json(ApiResponse.error('{gt_bc} is required'))
 
             const checkExisting = await DailyDiet.findOne({
                 created_by: user_id,
@@ -168,6 +170,7 @@ class DailyDietController {
                 evening_snacks: eveningSnacksList,
                 dinner: dinnerList,
                 water: water,
+                gt_bc: gt_bc,
                 createdAt: targetDate
             });
 
@@ -222,6 +225,7 @@ class DailyDietController {
             const diet = await DailyDiet.create({
                 created_by: user,
                 water: water,
+                gt_bc: 0,
                 breakfast: [],
                 morning_snacks: [],
                 lunch: [],
@@ -238,10 +242,69 @@ class DailyDietController {
         }
     }
 
+    static async addGtBc(req, res) {
+        try {
+            const {date} = req.query
+            const {user_id} = req.body;
+            const {gt_bc} = req.body;
+
+            const targetDate = date ? new Date(date) : getTodayDate()
+
+            if (gt_bc === null || gt_bc === undefined || gt_bc === 'null')
+                return res.status(400).json(ApiResponse.error('{gt_bc} is required'))
+
+            if (!user_id)
+                return res.status(400).json(ApiResponse.error('{user_id} is required'))
+
+            if (!mongoose.Types.ObjectId.isValid(user_id)) {
+                return res.status(400).json(ApiResponse.error('Invalid user id'))
+            }
+
+            const user = await User.findById(user_id);
+
+            if (!user) {
+                return res.status(404).json(ApiResponse.error('User not found'))
+            }
+
+            const checkExisting = await DailyDiet.findOne({
+                created_by: user_id,
+                createdAt: {
+                    $gte: targetDate,
+                    $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
+                }
+            })
+
+            if (checkExisting) {
+                req.params.id = checkExisting._id;
+                req.body.gt_bc = gt_bc;
+                await DailyDietController.update(req, res)
+                return
+            }
+
+            const diet = await DailyDiet.create({
+                created_by: user,
+                water: 0,
+                gt_bc: gt_bc,
+                breakfast: [],
+                morning_snacks: [],
+                lunch: [],
+                evening_snacks: [],
+                dinner: [],
+            });
+
+            const createdDiet = await DailyDiet.findById(diet._id)
+
+            return res.status(200).json(ApiResponse.success('GT/BC added successfully', createdDiet))
+
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message || 'Internal server error'))
+        }
+    }
+
     static async update(req, res) {
         try {
             const {id} = req.params;
-            const {user_id, water, breakfast, morning_snacks, lunch, evening_snacks, dinner} = req.body;
+            const {user_id, water, gt_bc, breakfast, morning_snacks, lunch, evening_snacks, dinner} = req.body;
 
             if (!user_id)
                 return res.status(400).json(ApiResponse.error('user is invalid'))
@@ -261,6 +324,11 @@ class DailyDietController {
             if (water !== null && water !== undefined && water !== 'null') {
 
                 diet.water = water
+            }
+            
+            if (gt_bc !== null && gt_bc !== undefined && gt_bc !== 'null') {
+
+                diet.gt_bc = gt_bc
             }
 
 
@@ -476,6 +544,7 @@ class DailyDietController {
         let dietPlanData
 
         let plan_water = 0
+        let plan_gt_bc = 0
         let dietPlanBreakfastCal = 0
         let dietPlanBreakfastList = []
         let dietPlanMorningSnacksCal = 0
@@ -530,6 +599,13 @@ class DailyDietController {
 
                         if (dietPlan.water > plan_water) {
                             plan_water = dietPlan.water
+                        }
+                    }
+                    
+                    if (dietPlan.gt_bc != null) {
+
+                        if (dietPlan.gt_bc > plan_gt_bc) {
+                            plan_gt_bc = dietPlan.gt_bc
                         }
                     }
 
@@ -628,7 +704,6 @@ class DailyDietController {
         const eveningSnacksMeal = meals.find(meal => meal.name === 'evening_snacks');
         const dinnerMeal = meals.find(meal => meal.name === 'dinner');
 
-        // FIXED: ADDED OPTIONAL CHAINING TO PREVENT CRASHES IF A MEAL IS MISSING IN DB
         // FIXED: Use null instead of '' so Flutter's DateTime.parse safely handles missing dates
         dietPlanData = {
             breakfast: {
@@ -694,6 +769,7 @@ class DailyDietController {
 
         responseObj.is_diet_plan_exist = isDietPlanExist
         responseObj.plan_water = plan_water
+        responseObj.plan_gt_bc = plan_gt_bc
 
         responseObj.total_calories = 0
         responseObj.total_plan_calories = totalPlanCal
@@ -814,11 +890,13 @@ class DailyDietController {
 
         if (userDiet) {
             responseObj.my_water = userDiet.water || 0
+            responseObj.my_gt_bc = userDiet.gt_bc || 0
             responseObj.my_data = myData
             //  responseObj._id = userDiet._id
             responseObj.createdAt = userDiet.createdAt
         } else {
             responseObj.my_water = 0
+            responseObj.my_gt_bc = 0
             responseObj.my_data = null
             responseObj.createdAt = null
 

@@ -11,6 +11,8 @@ router.put("/", DailyDietController.update)
 
 router.post("/water", DailyDietController.addWater)
 
+router.post("/gt_bc", DailyDietController.addGtBc)
+
 router.delete("/:id", DailyDietController.delete)
 
 export default router;

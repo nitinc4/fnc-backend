@@ -69,5 +69,22 @@ class PaymentController {
             return res.status(500).json(ApiResponse.error(e.message));
         }
     }
+    // Admin: Update UPI Details
+    static async updateUpiDetails(req, res) {
+        try {
+            const { upi_id, payee_name, subscription_amount } = req.body;
+            
+            // { upsert: true } is the magic here. If the DB is empty, it creates the first record!
+            const settings = await Setting.findOneAndUpdate(
+                {}, // Empty filter matches the first document it finds
+                { upi_id, payee_name, subscription_amount },
+                { new: true, upsert: true } 
+            );
+            
+            return res.status(200).json(ApiResponse.success('Settings updated successfully', settings));
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message));
+        }
+    }
 }
 export default PaymentController;

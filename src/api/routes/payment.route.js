@@ -13,5 +13,6 @@ router.get('/status/:transaction_ref', authenticateRequest, PaymentController.ch
 // Admin Routes
 router.get('/admin/all', PaymentController.getAllPayments);
 router.put('/admin/:id/verify', PaymentController.verifyPayment);
+router.put('/admin/upi-details', PaymentController.updateUpiDetails); // <--- ADD THIS LINE
 
 export default router;

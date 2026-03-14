@@ -1,15 +1,16 @@
 import express from 'express';
 import PaymentController from '../controllers/payment.controller.js';
-import authMiddleware from '../middlewares/auth.middleware.js'; 
+// FIXED: Using the named export { authenticateRequest } instead of a default export
+import { authenticateRequest } from '../middlewares/auth.middleware.js'; 
 
 const router = express.Router();
 
 // App Routes (Requires user to be logged in)
-router.get('/upi-details', authMiddleware, PaymentController.getUpiDetails);
-router.post('/intent', authMiddleware, PaymentController.createIntent);
-router.get('/status/:transaction_ref', authMiddleware, PaymentController.checkStatus);
+router.get('/upi-details', authenticateRequest, PaymentController.getUpiDetails);
+router.post('/intent', authenticateRequest, PaymentController.createIntent);
+router.get('/status/:transaction_ref', authenticateRequest, PaymentController.checkStatus);
 
-// Admin Routes (To be used by the EJS admin panel)
+// Admin Routes
 router.get('/admin/all', PaymentController.getAllPayments);
 router.put('/admin/:id/verify', PaymentController.verifyPayment);
 

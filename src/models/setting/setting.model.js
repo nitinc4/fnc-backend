@@ -53,7 +53,11 @@ const settingSchema = mongoose.Schema({
         type: String,
         default: "",
     },
+    // Add these inside your existing Setting schema:
+    upi_id: { type: String, default: "yourname@upi" },
+    payee_name: { type: String, default: "FNC " },
+    subscription_amount: { type: Number, default: 999 },
 
-}, {timestamps: true});
+}, { timestamps: true });
 
 export const Setting = mongoose.model("Setting", settingSchema);

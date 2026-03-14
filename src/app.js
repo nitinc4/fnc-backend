@@ -15,6 +15,7 @@ import dailyWeightRoute from "./api/routes/daily_weight.route.js";
 import planRoute from "./api/routes/plan.route.js";
 import settingRoute from "./api/routes/setting.route.js";
 import fileRoute from "./api/routes/file.route.js";
+import paymentRoute from './api/routes/payment.route.js';
 
 import webRouter from './web/web.js';
 import multer from "multer";
@@ -86,6 +87,8 @@ app.use(`${api}/plan`, authenticateRequest, planRoute);
 app.use(`${api}/setting`, authenticateRequest, settingRoute);
 
 app.use(`${api}/file`, authenticateRequest, fileRoute);
+
+app.use(`${api}/payment`, paymentRoute);
 
 
 export default app;

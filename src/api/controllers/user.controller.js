@@ -1,13 +1,13 @@
-import {User} from "../../models/auth/user.model.js";
+import { User } from "../../models/auth/user.model.js";
 import ApiResponse from "../../utils/api_response.js";
 import mongoose from "mongoose";
-import {UserProfile} from "../../models/profile/user_profile.model.js";
+import { UserProfile } from "../../models/profile/user_profile.model.js";
 
 class UserController {
 
     static async getAllUsers(req, res) {
 
-        const {name} = req.query;
+        const { name } = req.query;
 
         try {
 
@@ -16,7 +16,7 @@ class UserController {
             let allUsers = []
 
             let users = await User.find(
-                name && name !== 'null' && name !== '' ? {name: {$regex: new RegExp(name, 'i')}} : {}
+                name && name !== 'null' && name !== '' ? { name: { $regex: new RegExp(name, 'i') } } : {}
             ).select('-password -__v -createdAt -updatedAt -token');
 
             //get diet plan from user profile
@@ -25,7 +25,7 @@ class UserController {
                 let profile = null
                 if (user.status_id >= 1) {
 
-                    let userProfile = await UserProfile.find({'user_id': user._id}).populate({
+                    let userProfile = await UserProfile.find({ 'user_id': user._id }).populate({
                         path: 'diet_plans health_issues',
                         select: '_id name description'
                     });
@@ -34,7 +34,7 @@ class UserController {
                         profile = userProfile[0]._doc;
                     }
                 }
-                allUsers.push({...user._doc, diet_plan: diet_plan, profile: profile});
+                allUsers.push({ ...user._doc, diet_plan: diet_plan, profile: profile });
             }
 
             return res.status(200).json(ApiResponse.success('Users retrieved successfully', allUsers));
@@ -45,7 +45,7 @@ class UserController {
 
     static async getUserById(req, res) {
         try {
-            const {id} = req.params;
+            const { id } = req.params;
             if (mongoose.Types.ObjectId.isValid(id) === false) {
                 return res.status(400).json(ApiResponse.error('Invalid user id'));
             }
@@ -60,7 +60,7 @@ class UserController {
             let diet_plan = null;
             let profile = null
             if (user.status_id >= 1) {
-                let userProfile = await UserProfile.find({'user_id': user._id}).populate({
+                let userProfile = await UserProfile.find({ 'user_id': user._id }).populate({
                     path: 'diet_plans health_issues',
                     select: '_id name description'
                 });
@@ -69,7 +69,7 @@ class UserController {
                     profile = userProfile[0]._doc;
                 }
             }
-            userData = {...user._doc, diet_plan: diet_plan, profile: profile};
+            userData = { ...user._doc, diet_plan: diet_plan, profile: profile };
 
 
             return res.status(200).json(ApiResponse.success('User retrieved successfully', userData));
@@ -78,59 +78,63 @@ class UserController {
         }
     }
 
-static async updateUser(req, res) {
-    try {
-        const {id} = req.params;
-        // Added plan and trial_days to the destructured body
-        const {is_active, role, diet_plan, plan, trial_days} = req.body;
+    static async updateUser(req, res) {
+        try {
+            const { id } = req.params;
+            // Added plan and trial_days to the destructured body
+            const { is_active, role, diet_plan, plan, trial_days } = req.body;
 
-        if (mongoose.Types.ObjectId.isValid(id) === false) {
-            return res.status(400).json(ApiResponse.error('Invalid user id'));
-        }
-
-        const user = await User.findById(id);
-        if (!user) {
-            return res.status(400).json(ApiResponse.error('User not found'));
-        }
-
-        if (is_active !== undefined && is_active !== '' && is_active !== null && is_active !== 'null')
-            user.is_active = is_active;
-        if (role !== undefined && role !== '' && role !== null && role !== 'null')
-            user.role = role;
-
-        // --- New Logic for Plan and Trial Days ---
-        if (plan !== undefined && plan !== '' && plan !== null && plan !== 'null')
-            user.plan = plan;
-        if (trial_days !== undefined && trial_days !== '' && trial_days !== null && trial_days !== 'null')
-            user.trial_days = trial_days;
-        // ------------------------------------------
-
-        if (diet_plan !== undefined && diet_plan !== '' && diet_plan !== null && diet_plan !== 'null') {
-            if(mongoose.Types.ObjectId.isValid(diet_plan) === false){
-                return res.status(400).json(ApiResponse.error('Invalid diet plan id'));
+            if (mongoose.Types.ObjectId.isValid(id) === false) {
+                return res.status(400).json(ApiResponse.error('Invalid user id'));
             }
-            let userProfile = await UserProfile.find({'user_id': user._id});
-            if (userProfile.length > 0) {
-                userProfile[0].diet_plan = [diet_plan];
-                await userProfile[0].save();
+
+            const user = await User.findById(id);
+            if (!user) {
+                return res.status(400).json(ApiResponse.error('User not found'));
             }
+
+            if (is_active !== undefined && is_active !== '' && is_active !== null && is_active !== 'null')
+                user.is_active = is_active;
+            if (role !== undefined && role !== '' && role !== null && role !== 'null')
+                user.role = role;
+
+            if (plan !== undefined && plan !== '' && plan !== null && plan !== 'null')
+                user.plan = plan;
+            user.markModified('plan'); // Explicitly tell Mongoose 'plan' changed
+
+            if (trial_days !== undefined && trial_days !== '' && trial_days !== null && trial_days !== 'null')
+                user.trial_days = Number(trial_days); // Ensure it's a Number
+            user.markModified('trial_days');
+
+
+            // ------------------------------------------
+
+            if (diet_plan !== undefined && diet_plan !== '' && diet_plan !== null && diet_plan !== 'null') {
+                if (mongoose.Types.ObjectId.isValid(diet_plan) === false) {
+                    return res.status(400).json(ApiResponse.error('Invalid diet plan id'));
+                }
+                let userProfile = await UserProfile.find({ 'user_id': user._id });
+                if (userProfile.length > 0) {
+                    userProfile[0].diet_plan = [diet_plan];
+                    await userProfile[0].save();
+                }
+            }
+
+            await user.save();
+
+            return res.status(200).json(ApiResponse.success('User updated successfully', user));
+        } catch (error) {
+            return res.status(500).json(ApiResponse.error(error.message || 'Internal server error'));
         }
-
-        await user.save();
-
-        return res.status(200).json(ApiResponse.success('User updated successfully', user));
-    } catch (error) {
-        return res.status(500).json(ApiResponse.error(error.message || 'Internal server error'));
     }
-}
 
     static async updatePassword(req, res) {
         try {
-            const {user_id, old_password, new_password} = req.body;
+            const { user_id, old_password, new_password } = req.body;
 
 
             if (mongoose.Types.ObjectId.isValid(user_id) === false) {
-                return res.status(400).json({error: 'Invalid user id'});
+                return res.status(400).json({ error: 'Invalid user id' });
             }
 
             const user = await User.findById(user_id)
@@ -155,7 +159,7 @@ static async updateUser(req, res) {
 
     static async deleteUser(req, res) {
         try {
-            const {id} = req.params;
+            const { id } = req.params;
             const user = await User.findByIdAndDelete(id);
             if (!user) {
                 return res.status(400).json(ApiResponse.error('User not found'));

@@ -1,6 +1,7 @@
 import ApiResponse from "../../utils/api_response.js";
 import { Payment } from "../../models/payment/payment.model.js";
 import { Setting } from "../../models/setting/setting.model.js";
+import { User } from "../../models/auth/user.model.js";
 
 class PaymentController {
     // App: Fetch UPI Details
@@ -61,8 +62,10 @@ class PaymentController {
             
             const payment = await Payment.findByIdAndUpdate(id, { status }, { new: true });
             
-            // If verified, you would also update the User profile here to set isPremium = true
-            // await User.findByIdAndUpdate(payment.user_id, { isPremium: true });
+            // If verified, set the user's plan to paid
+            if (payment && status === 'verified') {
+                await User.findByIdAndUpdate(payment.user_id, { plan: 'paid' });
+            }
 
             return res.status(200).json(ApiResponse.success('Payment verified', payment));
         } catch (e) {

@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const userSchema = mongoose.Schema({
-
         google_id: {
             type: String,
             required: true,
@@ -30,6 +29,20 @@ const userSchema = mongoose.Schema({
             lowercase: true,
             enum: ["user", "admin", "superadmin"],
         },
+        // Added plan field with enum for free/paid
+        plan: {
+            type: String,
+            required: true,
+            lowercase: true,
+            enum: ["free", "paid"],
+            default: "free",
+        },
+        // Added trial_days field
+        trial_days: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
         status_id: {   // 0 - no profile, 1 - has profile,
             type: Number,
             required: true,
@@ -45,6 +58,5 @@ const userSchema = mongoose.Schema({
         },
     }, {timestamps: true}
 );
-
 
 export const User = mongoose.model("User", userSchema);

@@ -78,44 +78,51 @@ class UserController {
         }
     }
 
-    static async updateUser(req, res) {
-        try {
-            const {id} = req.params;
-            const {is_active, role, diet_plan} = req.body;
+static async updateUser(req, res) {
+    try {
+        const {id} = req.params;
+        // Added plan and trial_days to the destructured body
+        const {is_active, role, diet_plan, plan, trial_days} = req.body;
 
-            if (mongoose.Types.ObjectId.isValid(id) === false) {
-                return res.status(400).json(ApiResponse.error('Invalid user id'));
-            }
-
-            const user = await User.findById(id)
-            if (!user) {
-                return res.status(400).json(ApiResponse.error('User not found'));
-            }
-
-            if (is_active !== undefined && is_active !== '' && is_active !== null && is_active !== 'null')
-                user.is_active = is_active;
-            if (role !== undefined && role !== '' && role !== null && role !== 'null')
-                user.role = role;
-
-            if (diet_plan !== undefined && diet_plan !== '' && diet_plan !== null && diet_plan !== 'null') {
-                if(mongoose.Types.ObjectId.isValid(diet_plan) === false){
-                    return res.status(400).json(ApiResponse.error('Invalid diet plan id'));
-                }
-                let userProfile = await UserProfile.find({'user_id': user._id});
-                if (userProfile.length > 0) {
-                    userProfile[0].diet_plan = [diet_plan];
-                    await userProfile[0].save();
-                }
-            }
-
-            await user.save();
-
-
-            return res.status(200).json(ApiResponse.success('User updated successfully', user));
-        } catch (error) {
-            return res.status(500).json(ApiResponse.error(error.message || 'Internal server error'));
+        if (mongoose.Types.ObjectId.isValid(id) === false) {
+            return res.status(400).json(ApiResponse.error('Invalid user id'));
         }
+
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(400).json(ApiResponse.error('User not found'));
+        }
+
+        if (is_active !== undefined && is_active !== '' && is_active !== null && is_active !== 'null')
+            user.is_active = is_active;
+        if (role !== undefined && role !== '' && role !== null && role !== 'null')
+            user.role = role;
+
+        // --- New Logic for Plan and Trial Days ---
+        if (plan !== undefined && plan !== '' && plan !== null && plan !== 'null')
+            user.plan = plan;
+        if (trial_days !== undefined && trial_days !== '' && trial_days !== null && trial_days !== 'null')
+            user.trial_days = trial_days;
+        // ------------------------------------------
+
+        if (diet_plan !== undefined && diet_plan !== '' && diet_plan !== null && diet_plan !== 'null') {
+            if(mongoose.Types.ObjectId.isValid(diet_plan) === false){
+                return res.status(400).json(ApiResponse.error('Invalid diet plan id'));
+            }
+            let userProfile = await UserProfile.find({'user_id': user._id});
+            if (userProfile.length > 0) {
+                userProfile[0].diet_plan = [diet_plan];
+                await userProfile[0].save();
+            }
+        }
+
+        await user.save();
+
+        return res.status(200).json(ApiResponse.success('User updated successfully', user));
+    } catch (error) {
+        return res.status(500).json(ApiResponse.error(error.message || 'Internal server error'));
     }
+}
 
     static async updatePassword(req, res) {
         try {

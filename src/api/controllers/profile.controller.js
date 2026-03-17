@@ -5,16 +5,15 @@ import {User} from "../../models/auth/user.model.js";
 import mongoose from "mongoose";
 import {DietPlan} from "../../models/diet_plan/diet_plan.model.js";
 
-async function getDietPlans(healthIssues) {
+async function getDietPlans(healthIssues, user) {
     let dietPlans = []
-    /*if(healthIssues.length === 0){
-        //add general diet plan
-    }
-    else{
-        //add diet plan bases on health issues
-    }*/
     
-    if (healthIssues && healthIssues.length > 0) {
+    // Determine if the user has a paid plan. 
+    // Assuming that if user.plan is missing or explicitly set to 'free', it's a free plan.
+    const isPaidPlan = user && user.plan && user.plan.toLowerCase() !== 'free';
+    
+    // 1. Assign specific diet plans based on health issues ONLY if the user is on a paid plan
+    if (isPaidPlan && healthIssues && healthIssues.length > 0) {
         const issueIds = healthIssues.map(issue => issue._id || issue);
         const matchingPlans = await DietPlan.find({
             health_issues: { $in: issueIds }
@@ -22,6 +21,7 @@ async function getDietPlans(healthIssues) {
         dietPlans = [...matchingPlans];
     }
 
+    // 2. If free plan, OR if paid but no specific diet plan exists for the selected health issues, assign the general plan
     if (dietPlans.length === 0) {
         const plan = await DietPlan.findOne({name: 'general'});
 
@@ -173,7 +173,9 @@ class ProfileController {
                 healthIssues.push(healthIssue)
             }
 
-            const dietPlans = await getDietPlans(healthIssues)
+            // Pass user down to evaluate if they are on a paid plan
+            const dietPlans = await getDietPlans(healthIssues, user)
+            
             //get diet plans
             /* let dietPlans = []
              for(let plan of diet_plans){
@@ -337,7 +339,8 @@ class ProfileController {
                     return res.status(400).json(ApiResponse.error('{ diet_plans } must be an array'))
 
                 let dietPlanList = []
-                if (diet_plans.length === 0) {
+                // Fixed logic flaw: process custom plans if provided, else auto-assign based on user plan level
+                if (diet_plans.length > 0) {
                     for (let plan of diet_plans) {
                         if (mongoose.Types.ObjectId.isValid(plan) === false)
                             return res.status(400).json(ApiResponse.error('Invalid Diet Plan Id'))
@@ -349,11 +352,11 @@ class ProfileController {
                     }
                     existingUserProfile.diet_plans = dietPlanList
                 } else {
-                    dietPlanList = await getDietPlans(existingUserProfile.health_issues)
+                    existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues, user)
                 }
             } else {
                 if (existingUserProfile.diet_plans.length === 0) {
-                    existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues)
+                    existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues, user)
 
                 }
             }

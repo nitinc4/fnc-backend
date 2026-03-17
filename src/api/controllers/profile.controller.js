@@ -211,28 +211,8 @@ class ProfileController {
 
             const updatedUser = await User.findById(user_id)
 
-            // Make sure the newly created profile data is populated before sending back
-            let createdUserProfile = await UserProfile.findById(createdUser._id).select('-__v')
-                .populate('health_issues', '-__v')
-                .populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: {
-                        path: 'created_by',
-                        select: 'name email _id image_url',
-                    }
-                }).populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: {
-                        path: 'breakfast morning_snacks lunch evening_snacks dinner',
-                        select: '-__v',
-                        populate: {
-                            path: 'food_id',
-                            select: '-__v',
-                        }
-                    }
-                })
+            // Keeping the original response mapping to avoid frontend `.map()` crash
+            let createdUserProfile = await UserProfile.findById(createdUser._id)
 
             if (user.status_id < 1) {
                 user.status_id = 1
@@ -369,28 +349,8 @@ class ProfileController {
 
             await existingUserProfile.save()
 
-            // Make sure the updated data is heavily populated back to the frontend to keep app state aligned
+            // Keeping the original response mapping to avoid frontend `.map()` crash
             let updatedProfile = await UserProfile.findById(existingUserProfile._id).select('-__v')
-                .populate('health_issues', '-__v')
-                .populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: {
-                        path: 'created_by',
-                        select: 'name email _id image_url',
-                    }
-                }).populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: {
-                        path: 'breakfast morning_snacks lunch evening_snacks dinner',
-                        select: '-__v',
-                        populate: {
-                            path: 'food_id',
-                            select: '-__v',
-                        }
-                    }
-                })
 
             let updatedUser = await User.findById(user_id)
             updatedProfile._doc.name = updatedUser.name

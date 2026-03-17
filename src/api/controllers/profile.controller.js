@@ -23,7 +23,8 @@ async function getDietPlans(healthIssues, user) {
 
     // 2. If free plan, OR if paid but no specific diet plan exists for the selected health issues, assign the general plan
     if (dietPlans.length === 0) {
-        const plan = await DietPlan.findOne({name: 'general'});
+        // Using regex to match "General plan", "general plan", or "general"
+        const plan = await DietPlan.findOne({name: { $regex: /general/i }});
 
         if (!plan) {
             console.log('no general diet plan')
@@ -175,16 +176,6 @@ class ProfileController {
 
             // Pass user down to evaluate if they are on a paid plan
             const dietPlans = await getDietPlans(healthIssues, user)
-            
-            //get diet plans
-            /* let dietPlans = []
-             for(let plan of diet_plans){
-                 const dietPlan = await DietPlan.findById(plan)
-                 if(!dietPlan)
-                     return res.status(400).json(ApiResponse.error('Diet Plan does not exist'))
-                 dietPlans.push(dietPlan)
-             } */
-
 
             //create user profile
             const createdUser = await UserProfile.create({
@@ -220,8 +211,28 @@ class ProfileController {
 
             const updatedUser = await User.findById(user_id)
 
-
-            let createdUserProfile = await UserProfile.findById(createdUser._id)
+            // Make sure the newly created profile data is populated before sending back
+            let createdUserProfile = await UserProfile.findById(createdUser._id).select('-__v')
+                .populate('health_issues', '-__v')
+                .populate({
+                    path: 'diet_plans',
+                    select: '-__v',
+                    populate: {
+                        path: 'created_by',
+                        select: 'name email _id image_url',
+                    }
+                }).populate({
+                    path: 'diet_plans',
+                    select: '-__v',
+                    populate: {
+                        path: 'breakfast morning_snacks lunch evening_snacks dinner',
+                        select: '-__v',
+                        populate: {
+                            path: 'food_id',
+                            select: '-__v',
+                        }
+                    }
+                })
 
             if (user.status_id < 1) {
                 user.status_id = 1
@@ -237,14 +248,12 @@ class ProfileController {
             return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
         }
 
-
     }
 
 
     static async updateProfile(req, res) {
 
         console.log(req.body);
-
 
         //step1 : find profile
         //step2 : update profile
@@ -321,26 +330,24 @@ class ProfileController {
                 if (!Array.isArray(health_issues))
                     return res.status(400).json(ApiResponse.error('{ health_issues } must be an array'))
 
-                let healthIssues = []
+                let healthIssuesList = []
                 for (let issue of health_issues) {
                     if (mongoose.Types.ObjectId.isValid(issue) === false)
                         return res.status(400).json(ApiResponse.error('Invalid Health Issue Id'))
                     const healthIssue = await HealthIssue.findById(issue)
                     if (!healthIssue)
                         return res.status(400).json(ApiResponse.error('Health Issue does not exist'))
-                    healthIssues.push(healthIssue)
+                    healthIssuesList.push(healthIssue)
                 }
-                existingUserProfile.health_issues = healthIssues
+                existingUserProfile.health_issues = healthIssuesList
             }
-
 
             if (diet_plans) {
                 if (!Array.isArray(diet_plans))
                     return res.status(400).json(ApiResponse.error('{ diet_plans } must be an array'))
 
-                let dietPlanList = []
-                // Fixed logic flaw: process custom plans if provided, else auto-assign based on user plan level
                 if (diet_plans.length > 0) {
+                    let dietPlanList = []
                     for (let plan of diet_plans) {
                         if (mongoose.Types.ObjectId.isValid(plan) === false)
                             return res.status(400).json(ApiResponse.error('Invalid Diet Plan Id'))
@@ -348,22 +355,42 @@ class ProfileController {
                         if (!dietPlan)
                             return res.status(400).json(ApiResponse.error('Diet Plan does not exist'))
                         dietPlanList.push(dietPlan)
-
                     }
                     existingUserProfile.diet_plans = dietPlanList
                 } else {
+                    // Recalculate auto-assignment using current health issues if specific diet_plans aren't explicitly requested
                     existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues, user)
                 }
             } else {
-                if (existingUserProfile.diet_plans.length === 0) {
-                    existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues, user)
-
-                }
+                // ALWAYS recalculate when diet_plans is not explicitly passed. 
+                // This ensures changes in health_issues will trigger a plan update seamlessly.
+                existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues, user)
             }
 
             await existingUserProfile.save()
 
+            // Make sure the updated data is heavily populated back to the frontend to keep app state aligned
             let updatedProfile = await UserProfile.findById(existingUserProfile._id).select('-__v')
+                .populate('health_issues', '-__v')
+                .populate({
+                    path: 'diet_plans',
+                    select: '-__v',
+                    populate: {
+                        path: 'created_by',
+                        select: 'name email _id image_url',
+                    }
+                }).populate({
+                    path: 'diet_plans',
+                    select: '-__v',
+                    populate: {
+                        path: 'breakfast morning_snacks lunch evening_snacks dinner',
+                        select: '-__v',
+                        populate: {
+                            path: 'food_id',
+                            select: '-__v',
+                        }
+                    }
+                })
 
             let updatedUser = await User.findById(user_id)
             updatedProfile._doc.name = updatedUser.name

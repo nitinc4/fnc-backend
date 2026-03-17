@@ -285,3 +285,39 @@ class ProfileController {
 
             if (updatedUser.status_id < 1) {
                 updatedUser.status_id = 1
+                await updatedUser.save()
+            }
+
+            // Apply Flutter Safety Net
+            updatedProfile = sanitizeForFlutter(updatedProfile);
+
+            return res.status(200).json(ApiResponse.success('Profile Updated successfully', updatedProfile))
+
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
+        }
+    }
+
+    static async deleteProfile(req, res) {
+        const {user_id} = req.body;
+        if (!user_id) return res.status(400).json(ApiResponse.error('User is required'))
+
+        try {
+            const existingProfile = await UserProfile.findOne({user_id})
+            if (!existingProfile) return res.status(400).json(ApiResponse.error('Profile does not exist'))
+
+            const deletedProfile = await UserProfile.findByIdAndDelete(existingProfile._id)
+            if (!deletedProfile) return res.status(400).json(ApiResponse.error('Error deleting profile'))
+
+            const isUpdated = await User.findByIdAndUpdate(user_id, {status_id: 0})
+            if (!isUpdated) return res.status(400).json(ApiResponse.error('Profile Deleted and Error updating user status'))
+
+            return res.status(200).json(ApiResponse.success('Profile deleted successfully'))
+
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
+        }
+    }
+}
+
+export default ProfileController;

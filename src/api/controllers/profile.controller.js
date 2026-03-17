@@ -6,8 +6,8 @@ import mongoose from "mongoose";
 import {DietPlan} from "../../models/diet_plan/diet_plan.model.js";
 
 // --- SAFTEY UTILS FOR FLUTTER ---
-// Flutter strictly expects strings & numbers. If a UI dropdown sends a full object, 
-// we must extract the primitive value to prevent Dart casting crashes.
+// If the UI sends an object from a dropdown (e.g., {"id": "1", "name": "Male"}) 
+// instead of a string ("Male"), these safely extract the string to prevent DB corruption.
 const extractStr = (val) => {
     if (!val) return val;
     if (typeof val === 'object') return val.name || val.title || val.value || val.id || String(val);
@@ -23,28 +23,7 @@ const extractNum = (val) => {
 const extractId = (val) => {
     if (!val) return val;
     if (typeof val === 'object') return val._id || val.id || val;
-    return val;
-};
-
-// Fixes already corrupted DB data on the fly before sending it back to Flutter
-const sanitizeForFlutter = (profile) => {
-    if (!profile) return profile;
-    
-    // Guarantee user_id is a String
-    if (profile.user_id && typeof profile.user_id === 'object') {
-        profile.user_id = profile.user_id._id ? profile.user_id._id.toString() : profile.user_id.toString();
-    } else if (profile.user_id) {
-        profile.user_id = profile.user_id.toString();
-    }
-
-    // Force string fields to be strings (Fixes Dropdown Objects)
-    const stringFields = ['name', 'gender', 'goal', 'activity_level', 'city', 'state', 'country'];
-    for (let field of stringFields) {
-        if (profile[field] && typeof profile[field] === 'object') {
-            profile[field] = profile[field].name || profile[field].value || profile[field].title || String(profile[field]);
-        }
-    }
-    return profile;
+    return String(val);
 };
 // -------------------------------
 
@@ -52,6 +31,7 @@ async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user) {
     const isPaidPlan = user && user.plan && user.plan.toLowerCase() === 'paid';
     let finalPlanIds = [];
 
+    // 1. Paid Users get specific plans
     if (isPaidPlan) {
         if (requestedDietPlanIds && requestedDietPlanIds.length > 0) {
             const cleanRequested = requestedDietPlanIds.map(extractId);
@@ -66,6 +46,7 @@ async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user) {
         }
     }
 
+    // 2. Free Users (or Paid fallback) get General
     if (finalPlanIds.length === 0) {
         const generalPlan = await DietPlan.findOne({name: { $regex: /general/i }});
         if (generalPlan) finalPlanIds.push(generalPlan._id);
@@ -79,6 +60,7 @@ class ProfileController {
     static async getProfile(req, res) {
         const {user_id} = req.body;
         try {
+            // getProfile retains .populate() as the UI usually expects rich data on view
             let existingUserProfile = await UserProfile.findOne({user_id}).select('-__v')
                 .populate('health_issues', '-__v')
                 .populate({
@@ -99,8 +81,10 @@ class ProfileController {
                 return res.status(400).json(ApiResponse.error('Profile does not exist,try creating it'))
             }
 
-            // Apply Flutter Safety Net
-            existingUserProfile = sanitizeForFlutter(existingUserProfile);
+            // Ensure user_id is a plain string
+            if (existingUserProfile.user_id) {
+                existingUserProfile.user_id = existingUserProfile.user_id._id ? existingUserProfile.user_id._id.toString() : existingUserProfile.user_id.toString();
+            }
 
             return res.status(200).json(ApiResponse.success('User found successfully', existingUserProfile))
         } catch (e) {
@@ -144,7 +128,7 @@ class ProfileController {
 
             let healthIssuesList = []
             for (let issue of health_issues) {
-                const issueId = extractId(issue); // Extract ID safely
+                const issueId = extractId(issue);
                 if (mongoose.Types.ObjectId.isValid(issueId) === false) continue;
                 const healthIssue = await HealthIssue.findById(issueId)
                 if (healthIssue) healthIssuesList.push(healthIssue._id)
@@ -176,35 +160,21 @@ class ProfileController {
                     await UserProfile.findByIdAndDelete(createdUser._id)
                     return res.status(400).json(ApiResponse.error('Error updating user status  '))
                 }
+                user.status_id = 1;
+                await user.save();
             }
 
             const updatedUser = await User.findById(user_id)
 
-            let createdUserProfile = await UserProfile.findById(createdUser._id).select('-__v')
-                .populate('health_issues', '-__v')
-                .populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: { path: 'created_by', select: 'name email _id image_url' }
-                }).populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: {
-                        path: 'breakfast morning_snacks lunch evening_snacks dinner',
-                        select: '-__v',
-                        populate: { path: 'food_id', select: '-__v' }
-                    }
-                }).lean();
+            // VERY IMPORTANT: Using .lean() and NO POPULATION here so Flutter receives pure arrays of String IDs
+            let createdUserProfile = await UserProfile.findById(createdUser._id).select('-__v').lean();
 
-            if (user.status_id < 1) {
-                user.status_id = 1
-                await user.save()
-            }
-
-            createdUserProfile.name = updatedUser.name
+            createdUserProfile.name = updatedUser.name;
             
-            // Apply Flutter Safety Net
-            createdUserProfile = sanitizeForFlutter(createdUserProfile);
+            // GUARANTEE all IDs are strings to prevent Dart mapping crash
+            createdUserProfile.user_id = createdUserProfile.user_id.toString();
+            createdUserProfile.health_issues = (createdUserProfile.health_issues || []).map(id => id.toString());
+            createdUserProfile.diet_plans = (createdUserProfile.diet_plans || []).map(id => id.toString());
 
             return res.status(200).json(ApiResponse.success('User profile created successfully', createdUserProfile))
 
@@ -234,7 +204,6 @@ class ProfileController {
             if (name) user.name = extractStr(name);
             await user.save()
 
-            // Safely extract primitive values from objects to prevent Dart crashes
             if (weight) existingUserProfile.weight = extractNum(weight);
             if (target_weight) existingUserProfile.target_weight = extractNum(target_weight);
             if (height) existingUserProfile.height = extractNum(height);
@@ -264,32 +233,20 @@ class ProfileController {
 
             await existingUserProfile.save()
 
-            let updatedProfile = await UserProfile.findById(existingUserProfile._id).select('-__v')
-                .populate('health_issues', '-__v')
-                .populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: { path: 'created_by', select: 'name email _id image_url' }
-                }).populate({
-                    path: 'diet_plans',
-                    select: '-__v',
-                    populate: {
-                        path: 'breakfast morning_snacks lunch evening_snacks dinner',
-                        select: '-__v',
-                        populate: { path: 'food_id', select: '-__v' }
-                    }
-                }).lean();
-
             let updatedUser = await User.findById(user_id)
-            updatedProfile.name = updatedUser.name
-
             if (updatedUser.status_id < 1) {
                 updatedUser.status_id = 1
                 await updatedUser.save()
             }
 
-            // Apply Flutter Safety Net
-            updatedProfile = sanitizeForFlutter(updatedProfile);
+            // VERY IMPORTANT: Using .lean() and NO POPULATION here so Flutter receives pure arrays of String IDs
+            let updatedProfile = await UserProfile.findById(existingUserProfile._id).select('-__v').lean();
+            updatedProfile.name = updatedUser.name;
+
+            // GUARANTEE all IDs are strings to prevent Dart mapping crash
+            updatedProfile.user_id = updatedProfile.user_id.toString();
+            updatedProfile.health_issues = (updatedProfile.health_issues || []).map(id => id.toString());
+            updatedProfile.diet_plans = (updatedProfile.diet_plans || []).map(id => id.toString());
 
             return res.status(200).json(ApiResponse.success('Profile Updated successfully', updatedProfile))
 

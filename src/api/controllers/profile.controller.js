@@ -5,31 +5,35 @@ import {User} from "../../models/auth/user.model.js";
 import mongoose from "mongoose";
 import {DietPlan} from "../../models/diet_plan/diet_plan.model.js";
 
-async function getDietPlans(healthIssues, user) {
-    let dietPlans = []
+async function getDietPlans(healthIssueIds, user) {
+    let dietPlans = [];
     
-    // Determine if the user has a paid plan. 
-    // Assuming that if user.plan is missing or explicitly set to 'free', it's a free plan.
-    const isPaidPlan = user && user.plan && user.plan.toLowerCase() !== 'free';
+    // Explicitly check if the user is on the paid plan
+    const isPaidPlan = user && user.plan && user.plan.toLowerCase() === 'paid';
     
+    // Ensure we have a clean array of String/ObjectId representations for the $in query
+    const issueIds = (healthIssueIds || []).map(issue => 
+        issue._id ? issue._id.toString() : issue.toString()
+    ).filter(Boolean);
+
     // 1. Assign specific diet plans based on health issues ONLY if the user is on a paid plan
-    if (isPaidPlan && healthIssues && healthIssues.length > 0) {
-        const issueIds = healthIssues.map(issue => issue._id || issue);
+    if (isPaidPlan && issueIds.length > 0) {
         const matchingPlans = await DietPlan.find({
             health_issues: { $in: issueIds }
         });
-        dietPlans = [...matchingPlans];
+        if (matchingPlans && matchingPlans.length > 0) {
+            dietPlans = [...matchingPlans];
+        }
     }
 
-    // 2. If free plan, OR if paid but no specific diet plan exists for the selected health issues, assign the general plan
+    // 2. If free plan, OR if paid but no specific diet plan exists for the selected issues, assign the general plan
     if (dietPlans.length === 0) {
         // Using regex to match "General plan", "general plan", or "general"
         const plan = await DietPlan.findOne({name: { $regex: /general/i }});
-
-        if (!plan) {
-            console.log('no general diet plan')
+        if (plan) {
+            dietPlans.push(plan);
         } else {
-            dietPlans.push(plan)
+            console.log('No general diet plan found in the database');
         }
     }
     return dietPlans;
@@ -70,8 +74,6 @@ class ProfileController {
 
             return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
         }
-
-
     }
 
     static async createProfile(req, res) {
@@ -97,51 +99,20 @@ class ProfileController {
             return res.status(400).json(ApiResponse.error('User is required'))
         }
 
-        if (!weight)
-            return res.status(400).json(ApiResponse.error('{ weight } is required'))
-
-        if (!target_weight)
-            return res.status(400).json(ApiResponse.error('{ targeted_weight } is required'))
-
-        if (!height)
-            return res.status(400).json(ApiResponse.error('{ height } is required'))
-
-        if (!gender)
-            return res.status(400).json(ApiResponse.error('{ gender } is required'))
-
-
-        if (!age)
-            return res.status(400).json(ApiResponse.error('{ age } is required'))
-
-        if (!goal)
-            return res.status(400).json(ApiResponse.error('{ goal } is required'))
-
-        if (!activity_level)
-            return res.status(400).json(ApiResponse.error('{ activity_level } is required'))
-
-        if (!city)
-            return res.status(400).json(ApiResponse.error('{ city } is required'))
-
-        if (!state)
-            return res.status(400).json(ApiResponse.error('{ state } is required'))
-
-        if (!country)
-            return res.status(400).json(ApiResponse.error('{ country } is required'))
-
-        if (!diet_plans)
-            return res.status(400).json(ApiResponse.error('{ diet_plans } is required'))
-
-        if (!Array.isArray(diet_plans))
-            return res.status(400).json(ApiResponse.error('{ diet_plans } must be an array'))
-
-        if (!health_issues)
-            return res.status(400).json(ApiResponse.error('{ health_issues } is required'))
-
-        if (!Array.isArray(health_issues))
-            return res.status(400).json(ApiResponse.error('{ health_issues } must be an array'))
-
-
-        //let birth = getDate_YYYY_MM_DD(dob)
+        if (!weight) return res.status(400).json(ApiResponse.error('{ weight } is required'))
+        if (!target_weight) return res.status(400).json(ApiResponse.error('{ targeted_weight } is required'))
+        if (!height) return res.status(400).json(ApiResponse.error('{ height } is required'))
+        if (!gender) return res.status(400).json(ApiResponse.error('{ gender } is required'))
+        if (!age) return res.status(400).json(ApiResponse.error('{ age } is required'))
+        if (!goal) return res.status(400).json(ApiResponse.error('{ goal } is required'))
+        if (!activity_level) return res.status(400).json(ApiResponse.error('{ activity_level } is required'))
+        if (!city) return res.status(400).json(ApiResponse.error('{ city } is required'))
+        if (!state) return res.status(400).json(ApiResponse.error('{ state } is required'))
+        if (!country) return res.status(400).json(ApiResponse.error('{ country } is required'))
+        if (!diet_plans) return res.status(400).json(ApiResponse.error('{ diet_plans } is required'))
+        if (!Array.isArray(diet_plans)) return res.status(400).json(ApiResponse.error('{ diet_plans } must be an array'))
+        if (!health_issues) return res.status(400).json(ApiResponse.error('{ health_issues } is required'))
+        if (!Array.isArray(health_issues)) return res.status(400).json(ApiResponse.error('{ health_issues } must be an array'))
 
         try {
             //check if user profile exist
@@ -149,37 +120,35 @@ class ProfileController {
 
             if (existingUserProfile) {
                 return await ProfileController.updateProfile(req, res);
-                // return res.status(200).json(ApiResponse.error('Profile already exist,we have updated it'))
             }
 
             //get user
             const user = await User.findById(user_id)
 
-            if (!user)
-                return res.status(400).json(ApiResponse.error('User does not exist'))
+            if (!user) return res.status(400).json(ApiResponse.error('User does not exist'))
 
-            if (name)
-                user.name = name
+            if (name) user.name = name
 
             await user.save()
 
-            //get health issues
-            let healthIssues = []
+            // Get explicitly resolved ObjectIds to prevent Mongoose schema casting bugs
+            let healthIssueIds = []
             for (let issue of health_issues) {
                 if (mongoose.Types.ObjectId.isValid(issue) === false)
                     return res.status(400).json(ApiResponse.error('Invalid Health Issue Id'))
                 const healthIssue = await HealthIssue.findById(issue)
                 if (!healthIssue)
                     return res.status(400).json(ApiResponse.error('Health Issue does not exist'))
-                healthIssues.push(healthIssue)
+                healthIssueIds.push(healthIssue._id)
             }
 
-            // Pass user down to evaluate if they are on a paid plan
-            const dietPlans = await getDietPlans(healthIssues, user)
+            // Pass resolved IDs and user down to evaluate assignment
+            const resolvedDietPlans = await getDietPlans(healthIssueIds, user)
+            const dietPlanIds = resolvedDietPlans.map(dp => dp._id);
 
             //create user profile
             const createdUser = await UserProfile.create({
-                user_id: user,
+                user_id: user._id,
                 weight,
                 target_weight: target_weight,
                 height,
@@ -190,8 +159,8 @@ class ProfileController {
                 city,
                 state,
                 country,
-                health_issues: healthIssues,
-                diet_plans: dietPlans
+                health_issues: healthIssueIds, // Guarantee only ObjectIDs are passed
+                diet_plans: dietPlanIds        // Guarantee only ObjectIDs are passed
             })
 
             if (!createdUser) {
@@ -200,9 +169,7 @@ class ProfileController {
 
             //update user status to 1
             if (user.status_id < 1) {
-
                 const isStatusUpdated = await User.findByIdAndUpdate(user_id, {status_id: 1})
-
                 if (!isStatusUpdated) {
                     await UserProfile.findByIdAndDelete(createdUser._id)
                     return res.status(400).json(ApiResponse.error('Error updating user status  '))
@@ -211,8 +178,11 @@ class ProfileController {
 
             const updatedUser = await User.findById(user_id)
 
-            // Keeping the original response mapping to avoid frontend `.map()` crash
-            let createdUserProfile = await UserProfile.findById(createdUser._id)
+            // Perform a shallow populate to provide the frontend with necessary display data 
+            // without deep nesting that causes the `.map` mapping error
+            let createdUserProfile = await UserProfile.findById(createdUser._id).select('-__v')
+                .populate('health_issues', '-__v')
+                .populate('diet_plans', '-__v');
 
             if (user.status_id < 1) {
                 user.status_id = 1
@@ -224,10 +194,8 @@ class ProfileController {
             return res.status(200).json(ApiResponse.success('User profile created successfully', createdUserProfile))
 
         } catch (e) {
-
             return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
         }
-
     }
 
 
@@ -235,30 +203,14 @@ class ProfileController {
 
         console.log(req.body);
 
-        //step1 : find profile
-        //step2 : update profile
         const {
-            user_id,
-            name,
-            weight,
-            target_weight,
-            height,
-            gender,
-            age,
-            goal,
-            activity_level,
-            city,
-            state,
-            country,
-            health_issues,
-            diet_plans,
+            user_id, name, weight, target_weight, height, gender, age, goal, activity_level, 
+            city, state, country, health_issues, diet_plans,
         } = req.body
 
-        if (!user_id) {
-            return res.status(400).json(ApiResponse.error('User is required'))
-        }
+        if (!user_id) return res.status(400).json(ApiResponse.error('User is required'))
+
         try {
-            //check if user profile exist
             const existingUserProfile = await UserProfile.findOne({user_id})
 
             if (!existingUserProfile) {
@@ -267,90 +219,69 @@ class ProfileController {
 
             const user = await User.findById(user_id)
 
-            if (!user)
-                return res.status(400).json(ApiResponse.error('User does not exist'))
+            if (!user) return res.status(400).json(ApiResponse.error('User does not exist'))
 
-            if (name)
-                user.name = name
+            if (name) user.name = name
 
             await user.save()
 
-            if (weight) {
-                existingUserProfile.weight = weight
-            }
-            if (target_weight) {
-                existingUserProfile.target_weight = target_weight
-            }
-            if (height) {
-                existingUserProfile.height = height
-            }
-            if (gender) {
-                existingUserProfile.gender = gender
-            }
-            if (age) {
-                existingUserProfile.age = age
-            }
-            if (goal) {
-                existingUserProfile.goal = goal
-            }
-            if (activity_level) {
-                existingUserProfile.activity_level = activity_level
-            }
-            if (city) {
-                existingUserProfile.city = city
-            }
-            if (state) {
-                existingUserProfile.state = state
-            }
-            if (country) {
-                existingUserProfile.country = country
-            }
+            if (weight) existingUserProfile.weight = weight
+            if (target_weight) existingUserProfile.target_weight = target_weight
+            if (height) existingUserProfile.height = height
+            if (gender) existingUserProfile.gender = gender
+            if (age) existingUserProfile.age = age
+            if (goal) existingUserProfile.goal = goal
+            if (activity_level) existingUserProfile.activity_level = activity_level
+            if (city) existingUserProfile.city = city
+            if (state) existingUserProfile.state = state
+            if (country) existingUserProfile.country = country
 
+            // Resolve health issue ObjectIDs safely
             if (health_issues) {
-                if (!Array.isArray(health_issues))
-                    return res.status(400).json(ApiResponse.error('{ health_issues } must be an array'))
+                if (!Array.isArray(health_issues)) return res.status(400).json(ApiResponse.error('{ health_issues } must be an array'))
 
-                let healthIssuesList = []
+                let healthIssuesIds = []
                 for (let issue of health_issues) {
                     if (mongoose.Types.ObjectId.isValid(issue) === false)
                         return res.status(400).json(ApiResponse.error('Invalid Health Issue Id'))
                     const healthIssue = await HealthIssue.findById(issue)
                     if (!healthIssue)
                         return res.status(400).json(ApiResponse.error('Health Issue does not exist'))
-                    healthIssuesList.push(healthIssue)
+                    healthIssuesIds.push(healthIssue._id)
                 }
-                existingUserProfile.health_issues = healthIssuesList
+                existingUserProfile.health_issues = healthIssuesIds
             }
 
+            // Resolve diet plan ObjectIDs safely
             if (diet_plans) {
-                if (!Array.isArray(diet_plans))
-                    return res.status(400).json(ApiResponse.error('{ diet_plans } must be an array'))
+                if (!Array.isArray(diet_plans)) return res.status(400).json(ApiResponse.error('{ diet_plans } must be an array'))
 
                 if (diet_plans.length > 0) {
-                    let dietPlanList = []
+                    let dietPlanIds = []
                     for (let plan of diet_plans) {
                         if (mongoose.Types.ObjectId.isValid(plan) === false)
                             return res.status(400).json(ApiResponse.error('Invalid Diet Plan Id'))
                         const dietPlan = await DietPlan.findById(plan)
                         if (!dietPlan)
                             return res.status(400).json(ApiResponse.error('Diet Plan does not exist'))
-                        dietPlanList.push(dietPlan)
+                        dietPlanIds.push(dietPlan._id)
                     }
-                    existingUserProfile.diet_plans = dietPlanList
+                    existingUserProfile.diet_plans = dietPlanIds
                 } else {
-                    // Recalculate auto-assignment using current health issues if specific diet_plans aren't explicitly requested
-                    existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues, user)
+                    const calculatedPlans = await getDietPlans(existingUserProfile.health_issues, user)
+                    existingUserProfile.diet_plans = calculatedPlans.map(dp => dp._id)
                 }
             } else {
-                // ALWAYS recalculate when diet_plans is not explicitly passed. 
-                // This ensures changes in health_issues will trigger a plan update seamlessly.
-                existingUserProfile.diet_plans = await getDietPlans(existingUserProfile.health_issues, user)
+                const calculatedPlans = await getDietPlans(existingUserProfile.health_issues, user)
+                existingUserProfile.diet_plans = calculatedPlans.map(dp => dp._id)
             }
 
             await existingUserProfile.save()
 
-            // Keeping the original response mapping to avoid frontend `.map()` crash
+            // Shallow populate consistent with createProfile to avoid mapping errors but provide display data
             let updatedProfile = await UserProfile.findById(existingUserProfile._id).select('-__v')
+                .populate('health_issues', '-__v')
+                .populate('diet_plans', '-__v');
 
             let updatedUser = await User.findById(user_id)
             updatedProfile._doc.name = updatedUser.name
@@ -364,9 +295,7 @@ class ProfileController {
 
         } catch (e) {
             return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
-
         }
-
     }
 
     static async deleteProfile(req, res) {
@@ -386,7 +315,6 @@ class ProfileController {
             if (!existingProfile) {
                 return res.status(400).json(ApiResponse.error('Profile does not exist'))
             }
-
 
             //delete profile
             const deletedProfile = await UserProfile.findByIdAndDelete(existingProfile._id)

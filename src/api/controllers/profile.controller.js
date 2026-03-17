@@ -5,25 +5,73 @@ import {User} from "../../models/auth/user.model.js";
 import mongoose from "mongoose";
 import {DietPlan} from "../../models/diet_plan/diet_plan.model.js";
 
-async function getDietPlans(healthIssues, user) {
-    let dietPlans = []
+// --- SAFTEY UTILS FOR FLUTTER ---
+// Flutter strictly expects strings & numbers. If a UI dropdown sends a full object, 
+// we must extract the primitive value to prevent Dart casting crashes.
+const extractStr = (val) => {
+    if (!val) return val;
+    if (typeof val === 'object') return val.name || val.title || val.value || val.id || String(val);
+    return String(val);
+};
+
+const extractNum = (val) => {
+    if (val === undefined || val === null) return val;
+    if (typeof val === 'object') return Number(val.value || val.amount || 0);
+    return Number(val);
+};
+
+const extractId = (val) => {
+    if (!val) return val;
+    if (typeof val === 'object') return val._id || val.id || val;
+    return val;
+};
+
+// Fixes already corrupted DB data on the fly before sending it back to Flutter
+const sanitizeForFlutter = (profile) => {
+    if (!profile) return profile;
     
-    // Determine if the user has a paid plan
-    const isPaidPlan = user && user.plan && user.plan.toLowerCase() !== 'free';
-    
-    if (isPaidPlan && healthIssues && healthIssues.length > 0) {
-        const issueIds = healthIssues.map(issue => issue._id || issue);
-        const matchingPlans = await DietPlan.find({
-            health_issues: { $in: issueIds }
-        });
-        dietPlans = [...matchingPlans];
+    // Guarantee user_id is a String
+    if (profile.user_id && typeof profile.user_id === 'object') {
+        profile.user_id = profile.user_id._id ? profile.user_id._id.toString() : profile.user_id.toString();
+    } else if (profile.user_id) {
+        profile.user_id = profile.user_id.toString();
     }
 
-    if (dietPlans.length === 0) {
-        const plan = await DietPlan.findOne({name: { $regex: /general/i }});
-        if (plan) dietPlans.push(plan)
+    // Force string fields to be strings (Fixes Dropdown Objects)
+    const stringFields = ['name', 'gender', 'goal', 'activity_level', 'city', 'state', 'country'];
+    for (let field of stringFields) {
+        if (profile[field] && typeof profile[field] === 'object') {
+            profile[field] = profile[field].name || profile[field].value || profile[field].title || String(profile[field]);
+        }
     }
-    return dietPlans;
+    return profile;
+};
+// -------------------------------
+
+async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user) {
+    const isPaidPlan = user && user.plan && user.plan.toLowerCase() === 'paid';
+    let finalPlanIds = [];
+
+    if (isPaidPlan) {
+        if (requestedDietPlanIds && requestedDietPlanIds.length > 0) {
+            const cleanRequested = requestedDietPlanIds.map(extractId);
+            const validPlans = await DietPlan.find({ _id: { $in: cleanRequested } });
+            finalPlanIds = validPlans.map(p => p._id);
+        }
+
+        if (finalPlanIds.length === 0 && healthIssueIds && healthIssueIds.length > 0) {
+            const cleanIssues = healthIssueIds.map(extractId);
+            const matchingPlans = await DietPlan.find({ health_issues: { $in: cleanIssues } });
+            finalPlanIds = matchingPlans.map(p => p._id);
+        }
+    }
+
+    if (finalPlanIds.length === 0) {
+        const generalPlan = await DietPlan.findOne({name: { $regex: /general/i }});
+        if (generalPlan) finalPlanIds.push(generalPlan._id);
+    }
+
+    return finalPlanIds;
 }
 
 class ProfileController {
@@ -31,7 +79,7 @@ class ProfileController {
     static async getProfile(req, res) {
         const {user_id} = req.body;
         try {
-            const existingUserProfile = await UserProfile.findOne({user_id}).select('-__v')
+            let existingUserProfile = await UserProfile.findOne({user_id}).select('-__v')
                 .populate('health_issues', '-__v')
                 .populate({
                     path: 'diet_plans',
@@ -45,18 +93,14 @@ class ProfileController {
                         select: '-__v',
                         populate: { path: 'food_id', select: '-__v' }
                     }
-                }).lean(); // Use lean to allow formatting before sending
+                }).lean(); 
 
             if (!existingUserProfile) {
                 return res.status(400).json(ApiResponse.error('Profile does not exist,try creating it'))
             }
 
-            // GUARANTEE user_id is a String so Flutter doesn't crash
-            if (existingUserProfile.user_id && typeof existingUserProfile.user_id === 'object') {
-                existingUserProfile.user_id = existingUserProfile.user_id._id ? existingUserProfile.user_id._id.toString() : existingUserProfile.user_id.toString();
-            } else if (existingUserProfile.user_id) {
-                existingUserProfile.user_id = existingUserProfile.user_id.toString();
-            }
+            // Apply Flutter Safety Net
+            existingUserProfile = sanitizeForFlutter(existingUserProfile);
 
             return res.status(200).json(ApiResponse.success('User found successfully', existingUserProfile))
         } catch (e) {
@@ -95,29 +139,33 @@ class ProfileController {
             const user = await User.findById(user_id)
             if (!user) return res.status(400).json(ApiResponse.error('User does not exist'))
 
-            if (name) user.name = name
+            if (name) user.name = extractStr(name);
             await user.save()
 
-            let healthIssueIds = []
+            let healthIssuesList = []
             for (let issue of health_issues) {
-                if (mongoose.Types.ObjectId.isValid(issue) === false)
-                    return res.status(400).json(ApiResponse.error('Invalid Health Issue Id'))
-                const healthIssue = await HealthIssue.findById(issue)
-                if (!healthIssue) return res.status(400).json(ApiResponse.error('Health Issue does not exist'))
-                
-                healthIssueIds.push(healthIssue._id) // Only save IDs to DB
+                const issueId = extractId(issue); // Extract ID safely
+                if (mongoose.Types.ObjectId.isValid(issueId) === false) continue;
+                const healthIssue = await HealthIssue.findById(issueId)
+                if (healthIssue) healthIssuesList.push(healthIssue._id)
             }
 
-            const assignedDietPlans = await getDietPlans(healthIssueIds, user)
-            const dietPlanIds = assignedDietPlans.map(dp => dp._id);
+            const assignedDietPlanIds = await resolveDietPlans(healthIssuesList, diet_plans, user);
 
-            // Create profile
             const createdUser = await UserProfile.create({
-                user_id: user._id, // Guarantee we save an ID, not an Object
-                weight, target_weight, height, age, gender, goal, activity_level, 
-                city, state, country, 
-                health_issues: healthIssueIds,
-                diet_plans: dietPlanIds
+                user_id: user._id, 
+                weight: extractNum(weight), 
+                target_weight: extractNum(target_weight), 
+                height: extractNum(height), 
+                age: extractNum(age), 
+                gender: extractStr(gender), 
+                goal: extractStr(goal), 
+                activity_level: extractStr(activity_level), 
+                city: extractStr(city), 
+                state: extractStr(state), 
+                country: extractStr(country), 
+                health_issues: healthIssuesList,
+                diet_plans: assignedDietPlanIds
             })
 
             if (!createdUser) return res.status(400).json(ApiResponse.error('Error creating profile'))
@@ -132,7 +180,6 @@ class ProfileController {
 
             const updatedUser = await User.findById(user_id)
 
-            // Deep populate to prevent Flutter from crashing due to missing Object layers
             let createdUserProfile = await UserProfile.findById(createdUser._id).select('-__v')
                 .populate('health_issues', '-__v')
                 .populate({
@@ -156,12 +203,8 @@ class ProfileController {
 
             createdUserProfile.name = updatedUser.name
             
-            // GUARANTEE user_id is a String so Flutter doesn't crash
-            if (createdUserProfile.user_id && typeof createdUserProfile.user_id === 'object') {
-                createdUserProfile.user_id = createdUserProfile.user_id._id ? createdUserProfile.user_id._id.toString() : createdUserProfile.user_id.toString();
-            } else if (createdUserProfile.user_id) {
-                createdUserProfile.user_id = createdUserProfile.user_id.toString();
-            }
+            // Apply Flutter Safety Net
+            createdUserProfile = sanitizeForFlutter(createdUserProfile);
 
             return res.status(200).json(ApiResponse.success('User profile created successfully', createdUserProfile))
 
@@ -188,56 +231,39 @@ class ProfileController {
             const user = await User.findById(user_id)
             if (!user) return res.status(400).json(ApiResponse.error('User does not exist'))
 
-            if (name) user.name = name
+            if (name) user.name = extractStr(name);
             await user.save()
 
-            if (weight) existingUserProfile.weight = weight
-            if (target_weight) existingUserProfile.target_weight = target_weight
-            if (height) existingUserProfile.height = height
-            if (gender) existingUserProfile.gender = gender
-            if (age) existingUserProfile.age = age
-            if (goal) existingUserProfile.goal = goal
-            if (activity_level) existingUserProfile.activity_level = activity_level
-            if (city) existingUserProfile.city = city
-            if (state) existingUserProfile.state = state
-            if (country) existingUserProfile.country = country
+            // Safely extract primitive values from objects to prevent Dart crashes
+            if (weight) existingUserProfile.weight = extractNum(weight);
+            if (target_weight) existingUserProfile.target_weight = extractNum(target_weight);
+            if (height) existingUserProfile.height = extractNum(height);
+            if (age) existingUserProfile.age = extractNum(age);
+            
+            if (gender) existingUserProfile.gender = extractStr(gender);
+            if (goal) existingUserProfile.goal = extractStr(goal);
+            if (activity_level) existingUserProfile.activity_level = extractStr(activity_level);
+            if (city) existingUserProfile.city = extractStr(city);
+            if (state) existingUserProfile.state = extractStr(state);
+            if (country) existingUserProfile.country = extractStr(country);
 
             if (health_issues) {
                 if (!Array.isArray(health_issues)) return res.status(400).json(ApiResponse.error('{ health_issues } must be an array'))
                 let healthIssuesList = []
                 for (let issue of health_issues) {
-                    if (mongoose.Types.ObjectId.isValid(issue) === false) return res.status(400).json(ApiResponse.error('Invalid Health Issue Id'))
-                    const healthIssue = await HealthIssue.findById(issue)
-                    if (!healthIssue) return res.status(400).json(ApiResponse.error('Health Issue does not exist'))
-                    healthIssuesList.push(healthIssue._id)
+                    const issueId = extractId(issue);
+                    if (mongoose.Types.ObjectId.isValid(issueId) === false) continue;
+                    const healthIssue = await HealthIssue.findById(issueId)
+                    if (healthIssue) healthIssuesList.push(healthIssue._id)
                 }
                 existingUserProfile.health_issues = healthIssuesList
             }
 
-            if (diet_plans) {
-                if (!Array.isArray(diet_plans)) return res.status(400).json(ApiResponse.error('{ diet_plans } must be an array'))
-
-                if (diet_plans.length > 0) {
-                    let dietPlanList = []
-                    for (let plan of diet_plans) {
-                        if (mongoose.Types.ObjectId.isValid(plan) === false) return res.status(400).json(ApiResponse.error('Invalid Diet Plan Id'))
-                        const dietPlan = await DietPlan.findById(plan)
-                        if (!dietPlan) return res.status(400).json(ApiResponse.error('Diet Plan does not exist'))
-                        dietPlanList.push(dietPlan._id)
-                    }
-                    existingUserProfile.diet_plans = dietPlanList
-                } else {
-                    const resolvedPlans = await getDietPlans(existingUserProfile.health_issues, user)
-                    existingUserProfile.diet_plans = resolvedPlans.map(p => p._id)
-                }
-            } else {
-                const resolvedPlans = await getDietPlans(existingUserProfile.health_issues, user)
-                existingUserProfile.diet_plans = resolvedPlans.map(p => p._id)
-            }
+            const requestedPlans = diet_plans && Array.isArray(diet_plans) ? diet_plans : [];
+            existingUserProfile.diet_plans = await resolveDietPlans(existingUserProfile.health_issues, requestedPlans, user);
 
             await existingUserProfile.save()
 
-            // Deep populate to prevent Flutter from crashing due to missing Object layers
             let updatedProfile = await UserProfile.findById(existingUserProfile._id).select('-__v')
                 .populate('health_issues', '-__v')
                 .populate({
@@ -259,43 +285,3 @@ class ProfileController {
 
             if (updatedUser.status_id < 1) {
                 updatedUser.status_id = 1
-                await updatedUser.save()
-            }
-
-            // GUARANTEE user_id is a String so Flutter doesn't crash
-            if (updatedProfile.user_id && typeof updatedProfile.user_id === 'object') {
-                updatedProfile.user_id = updatedProfile.user_id._id ? updatedProfile.user_id._id.toString() : updatedProfile.user_id.toString();
-            } else if (updatedProfile.user_id) {
-                updatedProfile.user_id = updatedProfile.user_id.toString();
-            }
-
-            return res.status(200).json(ApiResponse.success('Profile Updated successfully', updatedProfile))
-
-        } catch (e) {
-            return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
-        }
-    }
-
-    static async deleteProfile(req, res) {
-        const {user_id} = req.body;
-        if (!user_id) return res.status(400).json(ApiResponse.error('User is required'))
-
-        try {
-            const existingProfile = await UserProfile.findOne({user_id})
-            if (!existingProfile) return res.status(400).json(ApiResponse.error('Profile does not exist'))
-
-            const deletedProfile = await UserProfile.findByIdAndDelete(existingProfile._id)
-            if (!deletedProfile) return res.status(400).json(ApiResponse.error('Error deleting profile'))
-
-            const isUpdated = await User.findByIdAndUpdate(user_id, {status_id: 0})
-            if (!isUpdated) return res.status(400).json(ApiResponse.error('Profile Deleted and Error updating user status'))
-
-            return res.status(200).json(ApiResponse.success('Profile deleted successfully'))
-
-        } catch (e) {
-            return res.status(500).json(ApiResponse.error(e.message || 'Internal Server Error'))
-        }
-    }
-}
-
-export default ProfileController;

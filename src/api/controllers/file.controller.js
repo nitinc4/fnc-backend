@@ -1,114 +1,108 @@
 import ApiResponse from "../../utils/api_response.js";
+import FileModel from "../../models/file/file.model.js";
 import path from "path";
-import fs from 'fs';
-
-function readFilesRecursively(directoryPath, baseDirectory) {
-    // Read the contents of the directory
-    const files = fs.readdirSync(directoryPath);
-
-    // Array to store file paths
-    let filePaths = [];
-
-    // Iterate over the files in the directory
-    files.forEach(function(file) {
-        // Construct the full path of the file
-        const filePath = path.join(directoryPath, file);
-
-        // Check if the file is a directory
-        if (fs.statSync(filePath).isDirectory()) {
-            // If it's a directory, recursively read files in it
-            const nestedFiles = readFilesRecursively(filePath, baseDirectory);
-            // Add the nested files to the filePaths array
-            filePaths = [...filePaths, ...nestedFiles];
-        } else {
-            // If it's a file, add its relative path to the filePaths array
-            const relativePath = path.relative(baseDirectory, filePath);
-            // Include 'public' in the relative path
-            filePaths.push(path.join('public', relativePath));
-        }
-    });
-
-    // Return the array of file paths
-    return filePaths;
-}
-
 
 class FileController {
 
-    static async get(req,res){
+    static async get(req, res) {
         try {
-            //get all files under public folder with full path
+            // Get all files from MongoDB (excluding actual file buffer to save memory/bandwidth)
+            const allFiles = await FileModel.find({}, 'name directory');
+            
+            // Reconstruct the file paths format expected by the frontend
+            const filePaths = allFiles.map(file => {
+                // Return format e.g., 'public/image.png'
+                return path.join(file.directory, file.name).replace(/\\/g, '/');
+            });
 
-            // Define the directory path where your files are located
-            const directoryPath = './public'; // Adjust the path as needed
+            res.status(200).send(ApiResponse.success('Files retrieved successfully', filePaths));
 
-            const allFiles = readFilesRecursively(directoryPath, directoryPath);
-
-
-            res.status(200).send(ApiResponse.success('Files retrieved successfully',allFiles));
-
-        }catch (e){
-            res.status(500).send(ApiResponse.error(e.message||'Internal Server Error'))
+        } catch (e) {
+            res.status(500).send(ApiResponse.error(e.message || 'Internal Server Error'));
         }
-
     }
 
-    static  async add(req,res){
+    static async add(req, res) {
         try {
-            let {name,directory} = req.body;
+            let { name, directory } = req.body;
 
-            if(!name){
+            if (!name) {
                 name = req.file.originalname.split('.')[0];
             }
 
-            if(!directory){
+            if (!directory) {
                 directory = 'public';
             }
 
-            //upload file to public folder
-            let uploadedFile = req.file;
+            const ext = path.extname(req.file.originalname);
+            const finalName = name + ext;
 
-            // Example: Move the uploaded file to a specific directory
-            const destinationPath = path.join(path.resolve(), '/'+directory+'/'); // Adjust the path as needed
+            // Save file data to MongoDB
+            const newFile = new FileModel({
+                name: finalName,
+                data: req.file.buffer,
+                contentType: req.file.mimetype,
+                size: req.file.size,
+                directory: directory
+            });
 
-            //get extension of uploaded file
-            const ext = path.extname(uploadedFile.originalname);
-            fs.renameSync(uploadedFile.path, path.join(destinationPath, name+ext));
+            await newFile.save();
 
-            uploadedFile.filename = name+ext;
-            uploadedFile.path =  directory+'/'+name+ext;
+            const uploadedFile = {
+                filename: finalName,
+                path: directory + '/' + finalName,
+                size: req.file.size,
+                mimetype: req.file.mimetype
+            };
 
             return res.status(200).send(ApiResponse.success('File uploaded successfully', uploadedFile));
 
-        }catch (e){
-            res.status(500).send(ApiResponse.error(e.message||'Internal Server Error'))
+        } catch (e) {
+            res.status(500).send(ApiResponse.error(e.message || 'Internal Server Error'));
         }
     }
 
-    static async delete(req,res){
+    static async delete(req, res) {
         try {
-            //delete file from public folder by name
-            const {pathname} = req.body
+            const { pathname } = req.body;
 
-            if(!pathname){
+            if (!pathname) {
                 return res.status(400).send(ApiResponse.error('{ pathname } is required'));
             }
 
-            const filePath = path.join(path.resolve(), '/'+pathname); // Adjust the path as needed
+            // Extract just the filename from the pathname
+            const filename = path.basename(pathname);
 
-            if(!fs.existsSync(filePath)){
+            // Delete file document from MongoDB
+            const deletedFile = await FileModel.findOneAndDelete({ name: filename });
+
+            if (!deletedFile) {
                 return res.status(404).send(ApiResponse.error('File not found'));
             }
-            fs.unlinkSync(filePath);
 
-            return res.status(200).send(ApiResponse.success('File deleted successfully',true));
+            return res.status(200).send(ApiResponse.success('File deleted successfully', true));
 
-        }catch (e){
-            res.status(500).send(ApiResponse.error(e.message||'Internal Server Error'))
+        } catch (e) {
+            res.status(500).send(ApiResponse.error(e.message || 'Internal Server Error'));
         }
-
     }
 
+    // New Method: Allows frontend/users to access/view the image via a URL
+    static async serve(req, res) {
+        try {
+            const { filename } = req.params;
+            const file = await FileModel.findOne({ name: filename });
+            
+            if (!file) {
+                return res.status(404).send(ApiResponse.error('File not found'));
+            }
+
+            res.set('Content-Type', file.contentType);
+            res.send(file.data);
+        } catch (e) {
+            res.status(500).send(ApiResponse.error(e.message || 'Internal Server Error'));
+        }
+    }
 }
 
-export default FileController
+export default FileController;

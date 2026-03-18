@@ -1,15 +1,16 @@
 import express from "express";
 import FileController from "../controllers/file.controller.js";
 import multerResponseMiddleware from "../middlewares/file.middelware.js";
+// Make sure this path points to your actual auth middleware
+import { authenticateRequest } from "../middlewares/auth.middleware.js"; 
 
 const router = express.Router();
 
 router.get('/', FileController.get);
-
-// Route to view/download actual files straight from MongoDB
 router.get('/view/:filename', FileController.serve); 
 
-router.post('/', multerResponseMiddleware, FileController.add);
+// Added authentication middleware so req.user is attached to the upload
+router.post('/', authenticateRequest, multerResponseMiddleware, FileController.add);
 
 router.delete('/', FileController.delete);
 

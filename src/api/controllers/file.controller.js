@@ -6,16 +6,24 @@ class FileController {
 
     static async get(req, res) {
         try {
-            // Get all files from MongoDB (excluding actual file buffer to save memory/bandwidth)
-            const allFiles = await FileModel.find({}, 'name directory');
+            // Retrieve files without the heavy data buffer, and populate the User info
+            const allFiles = await FileModel.find({}, '-data').populate('user', 'name email phone');
             
-            // Reconstruct the file paths format expected by the frontend
-            const filePaths = allFiles.map(file => {
-                // Return format e.g., 'public/image.png'
-                return path.join(file.directory, file.name).replace(/\\/g, '/');
+            // Format the response as an array of detailed objects
+            const filesData = allFiles.map(file => {
+                return {
+                    _id: file._id,
+                    path: path.join(file.directory, file.name).replace(/\\/g, '/'),
+                    name: file.name,
+                    directory: file.directory,
+                    contentType: file.contentType,
+                    size: file.size,
+                    createdAt: file.createdAt,
+                    user: file.user || null // Includes name and email from population
+                };
             });
 
-            res.status(200).send(ApiResponse.success('Files retrieved successfully', filePaths));
+            res.status(200).send(ApiResponse.success('Files retrieved successfully', filesData));
 
         } catch (e) {
             res.status(500).send(ApiResponse.error(e.message || 'Internal Server Error'));
@@ -25,6 +33,8 @@ class FileController {
     static async add(req, res) {
         try {
             let { name, directory } = req.body;
+            // Capture the user ID from your auth middleware
+            const userId = req.user ? req.user._id : null; 
 
             if (!name) {
                 name = req.file.originalname.split('.')[0];
@@ -37,13 +47,13 @@ class FileController {
             const ext = path.extname(req.file.originalname);
             const finalName = name + ext;
 
-            // Save file data to MongoDB
             const newFile = new FileModel({
                 name: finalName,
                 data: req.file.buffer,
                 contentType: req.file.mimetype,
                 size: req.file.size,
-                directory: directory
+                directory: directory,
+                user: userId // Save the association
             });
 
             await newFile.save();
@@ -52,7 +62,8 @@ class FileController {
                 filename: finalName,
                 path: directory + '/' + finalName,
                 size: req.file.size,
-                mimetype: req.file.mimetype
+                mimetype: req.file.mimetype,
+                user: userId
             };
 
             return res.status(200).send(ApiResponse.success('File uploaded successfully', uploadedFile));
@@ -65,20 +76,12 @@ class FileController {
     static async delete(req, res) {
         try {
             const { pathname } = req.body;
+            if (!pathname) return res.status(400).send(ApiResponse.error('{ pathname } is required'));
 
-            if (!pathname) {
-                return res.status(400).send(ApiResponse.error('{ pathname } is required'));
-            }
-
-            // Extract just the filename from the pathname
             const filename = path.basename(pathname);
-
-            // Delete file document from MongoDB
             const deletedFile = await FileModel.findOneAndDelete({ name: filename });
 
-            if (!deletedFile) {
-                return res.status(404).send(ApiResponse.error('File not found'));
-            }
+            if (!deletedFile) return res.status(404).send(ApiResponse.error('File not found'));
 
             return res.status(200).send(ApiResponse.success('File deleted successfully', true));
 
@@ -87,14 +90,16 @@ class FileController {
         }
     }
 
-    // New Method: Allows frontend/users to access/view the image via a URL
     static async serve(req, res) {
         try {
             const { filename } = req.params;
             const file = await FileModel.findOne({ name: filename });
             
-            if (!file) {
-                return res.status(404).send(ApiResponse.error('File not found'));
+            if (!file) return res.status(404).send(ApiResponse.error('File not found'));
+
+            // Enable PDFs to open directly in the browser instead of forcing a download
+            if (file.contentType === 'application/pdf') {
+                res.setHeader('Content-Disposition', `inline; filename="${file.name}"`);
             }
 
             res.set('Content-Type', file.contentType);

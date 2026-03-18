@@ -5,7 +5,9 @@ const fileSchema = new mongoose.Schema({
     data: { type: Buffer, required: true },
     contentType: { type: String, required: true },
     size: { type: Number, required: true },
-    directory: { type: String, default: 'public' }
+    directory: { type: String, default: 'public' },
+    // --- NEW: Link the file to the User who uploaded it ---
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null } 
 }, { timestamps: true });
 
 const FileModel = mongoose.model('File', fileSchema);

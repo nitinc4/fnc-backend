@@ -29,7 +29,7 @@ class DailyDietController {
 
             const {date} = req.query;
             const {user_id} = req.body;
-            const {water, gt_bc, breakfast, morning_snacks, lunch, evening_snacks, dinner} = req.body;
+            const {water, gt_bc, breakfast,  lunch,  dinner} = req.body;
 
             const user = await User.findById(user_id);
 
@@ -78,25 +78,7 @@ class DailyDietController {
                 }
             }
 
-            let morningSnacksList = []
-            if (morning_snacks) {
-                //add morning snacks meal plan
-                for (let meal of morning_snacks) {
-                    if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                        return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                    if (!meal.quantity)
-                        return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                    const foodData = await Food.findById(meal.food_id)
-                    if (!foodData)
-                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                    meal.food_id = foodData
-
-                    morningSnacksList.push(meal)
-                }
-            }
+        
 
             let lunchList = []
             if (lunch) {
@@ -117,26 +99,7 @@ class DailyDietController {
                     lunchList.push(meal)
                 }
             }
-            let eveningSnacksList = []
-
-            if (evening_snacks) {
-                //add evening snacks meal plan
-                for (let meal of evening_snacks) {
-                    if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                        return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                    if (!meal.quantity)
-                        return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                    const foodData = await Food.findById(meal.food_id)
-                    if (!foodData)
-                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                    meal.food_id = foodData
-
-                    eveningSnacksList.push(meal)
-                }
-            }
+           
 
             let dinnerList = []
             if (dinner) {
@@ -162,9 +125,7 @@ class DailyDietController {
             const diet = await DailyDiet.create({
                 created_by: user,
                 breakfast: breakfastList,
-                morning_snacks: morningSnacksList,
                 lunch: lunchList,
-                evening_snacks: eveningSnacksList,
                 dinner: dinnerList,
                 water: safeWater,
                 gt_bc: safeGtBc,
@@ -224,9 +185,7 @@ class DailyDietController {
                 water: water,
                 gt_bc: 0,
                 breakfast: [],
-                morning_snacks: [],
                 lunch: [],
-                evening_snacks: [],
                 dinner: [],
             });
 
@@ -283,9 +242,7 @@ class DailyDietController {
                 water: 0,
                 gt_bc: gt_bc,
                 breakfast: [],
-                morning_snacks: [],
                 lunch: [],
-                evening_snacks: [],
                 dinner: [],
             });
 
@@ -301,7 +258,7 @@ class DailyDietController {
     static async update(req, res) {
         try {
             const {id} = req.params;
-            const {user_id, water, gt_bc, breakfast, morning_snacks, lunch, evening_snacks, dinner} = req.body;
+            const {user_id, water, gt_bc, breakfast,  lunch,  dinner} = req.body;
 
             if (!user_id)
                 return res.status(400).json(ApiResponse.error('user is invalid'))
@@ -353,29 +310,7 @@ class DailyDietController {
                 }
             }
 
-            if (morning_snacks) {
-                if (Array.isArray(morning_snacks)) {
-                    //add morning snacks meal plan
-                    let morningSnacksList = []
-                    for (let meal of morning_snacks) {
-                        if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                            return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                        if (!meal.quantity)
-                            return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                        const foodData = await Food.findById(meal.food_id)
-                        if (!foodData)
-                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                        meal.food_id = foodData
-
-                        morningSnacksList.push(meal)
-                    }
-
-                    diet.morning_snacks = morningSnacksList
-                }
-            }
+           
 
             if (lunch) {
                 if (Array.isArray(lunch)) {
@@ -402,32 +337,7 @@ class DailyDietController {
 
             }
 
-            if (evening_snacks) {
-                //add evening snacks meal plan
-                if (Array.isArray(evening_snacks)) {
-
-
-                    let eveningSnacksList = []
-                    for (let meal of evening_snacks) {
-                        if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                            return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                        if (!meal.quantity)
-                            return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                        const foodData = await Food.findById(meal.food_id)
-                        if (!foodData)
-                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                        meal.food_id = foodData
-
-                        eveningSnacksList.push(meal)
-                    }
-
-                    diet.evening_snacks = eveningSnacksList
-                }
-
-            }
+            
 
             if (dinner) {
 
@@ -509,7 +419,7 @@ class DailyDietController {
             }).populate(
                 {
 
-                    path: 'breakfast.food_id morning_snacks.food_id lunch.food_id evening_snacks.food_id dinner.food_id',
+                    path: 'breakfast.food_id  lunch.food_id  dinner.food_id',
                     populate: 'meals nutrients.nutrient_id'
                 });
         } else {
@@ -521,7 +431,7 @@ class DailyDietController {
                 }
             }).populate(
                 {
-                    path: 'breakfast.food_id morning_snacks.food_id lunch.food_id evening_snacks.food_id dinner.food_id',
+                    path: 'breakfast.food_id  lunch.food_id  dinner.food_id',
                     populate: 'meals nutrients.nutrient_id'
                 });
 
@@ -532,7 +442,7 @@ class DailyDietController {
         const dietPlans = await UserProfile.findOne({user_id: user_id}).populate({
             path: 'diet_plans',
             populate: {
-                path: 'breakfast.food_id morning_snacks.food_id lunch.food_id evening_snacks.food_id dinner.food_id',
+                path: 'breakfast.food_id lunch.food_id dinner.food_id',
                 populate: 'meals nutrients.nutrient_id'
             }
         })
@@ -544,12 +454,8 @@ class DailyDietController {
         let plan_gt_bc = 0
         let dietPlanBreakfastCal = 0
         let dietPlanBreakfastList = []
-        let dietPlanMorningSnacksCal = 0
-        let dietPlanMorningSnacksList = []
         let dietPlanLunchCal = 0
         let dietPlanLunchList = []
-        let dietPlanEveningSnacksCal = 0
-        let dietPlanEveningSnacksList = []
         let dietPlanDinnerCal = 0
         let dietPlanDinnerList = []
 
@@ -626,20 +532,7 @@ class DailyDietController {
                         }
                     }
 
-                    //morning snacks
-                    if (Array.isArray(dietPlan.morning_snacks)) {
-                        for (let food of dietPlan.morning_snacks) {
-
-                            //calculate nutrients
-                            addPlanNutrient(food)
-
-                            //calculate calories
-                            let foodCalPerGm = food.food_id.calories_per_quantity / food.food_id.nutrients_per_quantity
-                            dietPlanMorningSnacksCal += food.quantity * foodCalPerGm
-                            const foodItem = Object.assign(food._doc, {total_calories: Math.floor(food.quantity * foodCalPerGm)})
-                            dietPlanMorningSnacksList.push(foodItem)
-                        }
-                    }
+                  
 
                     //lunch
                     if (Array.isArray(dietPlan.lunch)) {
@@ -656,20 +549,7 @@ class DailyDietController {
                         }
                     }
 
-                    //evening snacks
-                    if (Array.isArray(dietPlan.evening_snacks)) {
-                        for (let food of dietPlan.evening_snacks) {
-
-                            //calculate nutrients
-                            addPlanNutrient(food)
-
-                            //calculate calories
-                            let foodCalPerGm = food.food_id.calories_per_quantity / food.food_id.nutrients_per_quantity
-                            dietPlanEveningSnacksCal += food.quantity * foodCalPerGm
-                            const foodItem = Object.assign(food._doc, {total_calories: Math.floor(food.quantity * foodCalPerGm)})
-                            dietPlanEveningSnacksList.push(foodItem)
-                        }
-                    }
+             
 
                     //dinner
                     if (Array.isArray(dietPlan.dinner)) {
@@ -691,14 +571,12 @@ class DailyDietController {
         }
 
 
-        const totalPlanCal = Math.floor(dietPlanBreakfastCal + dietPlanMorningSnacksCal + dietPlanLunchCal + dietPlanEveningSnacksCal + dietPlanDinnerCal)
+        const totalPlanCal = Math.floor(dietPlanBreakfastCal + dietPlanLunchCal + dietPlanDinnerCal)
 
         const meals = await Meal.find().select('name start_time end_time')
 
         const breakfastMeal = meals.find(meal => meal.name === 'breakfast');
-        const morningSnacksMeal = meals.find(meal => meal.name === 'morning_snacks');
         const lunchMeal = meals.find(meal => meal.name === 'lunch');
-        const eveningSnacksMeal = meals.find(meal => meal.name === 'evening_snacks');
         const dinnerMeal = meals.find(meal => meal.name === 'dinner');
 
         // FIXED: Use null instead of '' so Flutter's DateTime.parse safely handles missing dates
@@ -709,25 +587,14 @@ class DailyDietController {
                 end_time: breakfastMeal?.end_time || null,
                 foods: dietPlanBreakfastList,
             },
-            morning_snacks: {
-                total_calories: Math.floor(dietPlanMorningSnacksCal),
-                start_time: morningSnacksMeal?.start_time || null,
-                end_time: morningSnacksMeal?.end_time || null,
-                foods: dietPlanMorningSnacksList
-
-            },
+            
             lunch: {
                 total_calories: Math.floor(dietPlanLunchCal),
                 start_time: lunchMeal?.start_time || null,
                 end_time: lunchMeal?.end_time || null,
                 foods: dietPlanLunchList
             },
-            evening_snacks: {
-                total_calories: Math.floor(dietPlanEveningSnacksCal),
-                start_time: eveningSnacksMeal?.start_time || null,
-                end_time: eveningSnacksMeal?.end_time || null,
-                foods: dietPlanEveningSnacksList
-            },
+           
             dinner: {
                 total_calories: Math.floor(dietPlanDinnerCal),
                 start_time: dinnerMeal?.start_time || null,
@@ -794,24 +661,7 @@ class DailyDietController {
                 foods: foodBreakFastList
             }
 
-            //organise morning snacks diet data
-            let foodMorningSnacksCal = 0
-            let foodMorningSnacksList = []
-            for (let meal of userDiet.morning_snacks) {
-
-                //calculate nutrients
-                addDietNutrient(meal)
-
-                //calculate calories
-                let foodCalPerGm = meal.food_id.calories_per_quantity / meal.food_id.nutrients_per_quantity
-                foodMorningSnacksCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
-                foodMorningSnacksList.push(foodItem)
-            }
-            myData.morning_snacks = {
-                total_calories: Math.floor(foodMorningSnacksCal),
-                foods: foodMorningSnacksList
-            }
+            
 
             //organise lunch diet data
             let foodLunchCal = 0
@@ -830,25 +680,6 @@ class DailyDietController {
             myData.lunch = {
                 total_calories: Math.floor(foodLunchCal),
                 foods: foodLunchList
-            }
-
-            //organise evening snacks diet data
-            let foodEveningSnacksCal = 0
-            let foodEveningSnacksList = []
-            for (let meal of userDiet.evening_snacks) {
-
-                //calculate nutrients
-                addDietNutrient(meal)
-
-                //calculate calories
-                let foodCalPerGm = meal.food_id.calories_per_quantity / meal.food_id.nutrients_per_quantity
-                foodEveningSnacksCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
-                foodEveningSnacksList.push(foodItem)
-            }
-            myData.evening_snacks = {
-                total_calories: Math.floor(foodEveningSnacksCal),
-                foods: foodEveningSnacksList
             }
 
             //organise dinner diet data
@@ -870,7 +701,7 @@ class DailyDietController {
                 foods: foodDinnerList
             }
 
-            responseObj.total_calories = Math.floor(foodBreakFastCal + foodMorningSnacksCal + foodLunchCal + foodEveningSnacksCal + foodDinnerCal)
+            responseObj.total_calories = Math.floor(foodBreakFastCal + foodLunchCal + foodDinnerCal)
 
 
         }

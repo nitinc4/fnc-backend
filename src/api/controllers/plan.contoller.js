@@ -12,7 +12,7 @@ class PlanController {
                 select: '-__v',
                 strictPopulate: false,
                 populate: {
-                    path: 'breakfast morning_snacks lunch evening_snacks dinner created_by',
+                    path: 'breakfast lunch dinner created_by',
                     select: '-__v',
                     populate: {
                         path: 'food_id',
@@ -94,7 +94,7 @@ class PlanController {
                 select: '-__v',
                 strictPopulate: false,
                 populate: {
-                    path: 'breakfast morning_snacks lunch evening_snacks dinner created_by',
+                    path: 'breakfast lunch dinner created_by',
                     select: '-__v',
                     populate: {
                         path: 'food_id',
@@ -157,7 +157,7 @@ class PlanController {
                 select: '-__v',
                 strictPopulate: false,
                 populate: {
-                    path: 'breakfast morning_snacks lunch evening_snacks dinner created_by',
+                    path: 'breakfast lunch dinner created_by',
                     select: '-__v',
                     populate: {
                         path: 'food_id',

@@ -20,9 +20,7 @@ const dietPlanSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, ref: "HealthIssue",
     }],
     breakfast: [FoodQuantitySchema],
-    morning_snacks: [FoodQuantitySchema],
     lunch: [FoodQuantitySchema],
-    evening_snacks: [FoodQuantitySchema],
     dinner: [FoodQuantitySchema],
     water: {
         type: Number,

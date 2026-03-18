@@ -15,9 +15,7 @@ const dailyDietSchema = mongoose.Schema({
         required: true,
     },
     breakfast: [FoodQuantitySchema],
-    morning_snacks: [FoodQuantitySchema],
     lunch: [FoodQuantitySchema],
-    evening_snacks: [FoodQuantitySchema],
     dinner: [FoodQuantitySchema],
 }, {timestamps: true});
 

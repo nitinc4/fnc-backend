@@ -71,7 +71,7 @@ class ProfileController {
                     path: 'diet_plans',
                     select: '-__v',
                     populate: {
-                        path: 'breakfast morning_snacks lunch evening_snacks dinner',
+                        path: 'breakfast lunch dinner',
                         select: '-__v',
                         populate: { path: 'food_id', select: '-__v' }
                     }

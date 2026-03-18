@@ -14,7 +14,7 @@ class DietPlanController {
                 path:'created_by',
                 select:'-password -__v -createdAt -updatedAt -token'
             }).populate({
-                path: 'breakfast.food_id morning_snacks.food_id lunch.food_id evening_snacks.food_id dinner.food_id',
+                path: 'breakfast.food_id lunch.food_id dinner.food_id',
             })
             return res.status(200).send(ApiResponse.success('Diet Plans Retrieved', dietPlans))
         } catch (e) {
@@ -33,7 +33,7 @@ class DietPlanController {
                 return res.status(400).send(ApiResponse.error('Invalid Diet Plan id'))
 
             const dietPlan = await DietPlan.findById(id).select('-__v').populate('health_issues').populate({
-                path: 'breakfast.food_id morning_snacks.food_id lunch.food_id evening_snacks.food_id dinner.food_id',
+                path: 'breakfast.food_id lunch.food_id dinner.food_id',
 
             })
 
@@ -50,8 +50,8 @@ class DietPlanController {
     static async createDietPlan(req, res) {
 
         const {
-            user_id, name, description, start_date, end_date, health_issues, breakfast, morning_snacks, lunch,
-            evening_snacks, dinner, water, gt_bc
+            user_id, name, description, start_date, end_date, health_issues, breakfast, lunch,
+            dinner, water, gt_bc
         } = req.body
 
         if (!user_id)
@@ -78,18 +78,9 @@ class DietPlanController {
             if (!Array.isArray(breakfast))
                 return res.status(400).send(ApiResponse.error('{ breakfast } must be an array'))
 
-        if (morning_snacks)
-            if (!Array.isArray(morning_snacks))
-                return res.status(400).send(ApiResponse.error('{ morning_snacks } must be an array'))
-
         if (lunch)
             if (!Array.isArray(lunch))
                 return res.status(400).send(ApiResponse.error('{ lunch } must be an array'))
-
-
-        if (evening_snacks)
-            if (!Array.isArray(evening_snacks))
-                return res.status(400).send(ApiResponse.error('{ evening_snacks } must be an array'))
 
         if (dinner)
             if (!Array.isArray(dinner))
@@ -101,8 +92,8 @@ class DietPlanController {
         if (gt_bc === null || gt_bc === undefined)
             return res.status(400).send(ApiResponse.error('{ gt_bc } is required'))
 
-        if (!breakfast && !morning_snacks && !lunch && !evening_snacks && !dinner)
-            return res.status(400).send(ApiResponse.error('At least one meal plan is required { breakfast, morning_snacks, lunch, evening_snacks, dinner }'))
+        if (!breakfast && !lunch && !dinner)
+            return res.status(400).send(ApiResponse.error('At least one meal plan is required { breakfast, lunch, dinner }'))
 
 
         try {
@@ -153,23 +144,7 @@ class DietPlanController {
                 breakfastList.push(meal)
             }
 
-            //add morning snacks meal plan
-            let morningSnacksList = []
-            for (let meal of morning_snacks) {
-                if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                    return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                if (!meal.quantity)
-                    return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                const foodData = await Food.findById(meal.food_id)
-                if (!foodData)
-                    return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                meal.food_id = foodData
-
-                morningSnacksList.push(meal)
-            }
+        
 
             //add lunch meal plan
             let lunchList = []
@@ -189,23 +164,7 @@ class DietPlanController {
                 lunchList.push(meal)
             }
 
-            //add evening snacks meal plan
-            let eveningSnacksList = []
-            for (let meal of evening_snacks) {
-                if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                    return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                if (!meal.quantity)
-                    return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                const foodData = await Food.findById(meal.food_id)
-                if (!foodData)
-                    return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                meal.food_id = foodData
-
-                eveningSnacksList.push(meal)
-            }
+          
 
             //add dinner meal plan
             let dinnerList = []
@@ -235,9 +194,7 @@ class DietPlanController {
                     created_by: user,
                     health_issues: healthIssues,
                     breakfast: breakfastList,
-                    morning_snacks: morningSnacksList,
                     lunch: lunchList,
-                    evening_snacks: eveningSnacksList,
                     dinner: dinnerList,
                     water: water,
                     gt_bc: gt_bc
@@ -269,9 +226,7 @@ class DietPlanController {
             end_date,
             health_issues,
             breakfast,
-            morning_snacks,
             lunch,
-            evening_snacks,
             dinner,
             water,
             gt_bc
@@ -358,28 +313,6 @@ class DietPlanController {
                 existingPLan.breakfast = breakfastList
             }
 
-            if (morning_snacks) {
-                if (!Array.isArray(morning_snacks))
-                    return res.status(400).send(ApiResponse.error('{ morning_snacks } must be an array'))
-
-                let morningSnacksList = []
-                for (let meal of morning_snacks) {
-                    if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                        return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                    if (!meal.quantity)
-                        return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                    const foodData = await Food.findById(meal.food_id)
-                    if (!foodData)
-                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                    meal.food_id = foodData
-
-                    morningSnacksList.push(meal)
-                }
-                existingPLan.morning_snacks = morningSnacksList
-            }
 
             if (lunch) {
                 if (!Array.isArray(lunch))
@@ -404,28 +337,7 @@ class DietPlanController {
                 existingPLan.lunch = lunchList
             }
 
-            if (evening_snacks) {
-                if (!Array.isArray(evening_snacks))
-                    return res.status(400).send(ApiResponse.error('{ evening_snacks } must be an array'))
-
-                let eveningSnacksList = []
-                for (let meal of evening_snacks) {
-                    if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                        return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
-
-                    if (!meal.quantity)
-                        return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
-
-                    const foodData = await Food.findById(meal.food_id)
-                    if (!foodData)
-                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
-                    meal.food_id = foodData
-
-                    eveningSnacksList.push(meal)
-                }
-                existingPLan.evening_snacks = eveningSnacksList
-            }
+           
 
             if (dinner) {
                 if (!Array.isArray(dinner))

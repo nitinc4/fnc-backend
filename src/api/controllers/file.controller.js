@@ -6,10 +6,14 @@ class FileController {
 
     static async get(req, res) {
         try {
-            // Retrieve files without the heavy data buffer, and populate the User info
-            const allFiles = await FileModel.find({}, '-data').populate('user', 'name email phone');
+            // NEW: Filter by userId if it's provided in the query string
+            const query = {};
+            if (req.query.userId) {
+                query.user = req.query.userId;
+            }
+
+            const allFiles = await FileModel.find(query, '-data').populate('user', 'name email phone');
             
-            // Format the response as an array of detailed objects
             const filesData = allFiles.map(file => {
                 return {
                     _id: file._id,
@@ -19,7 +23,7 @@ class FileController {
                     contentType: file.contentType,
                     size: file.size,
                     createdAt: file.createdAt,
-                    user: file.user || null // Includes name and email from population
+                    user: file.user || null 
                 };
             });
 
@@ -32,17 +36,20 @@ class FileController {
 
     static async add(req, res) {
         try {
-            let { name, directory } = req.body;
-            // Capture the user ID from your auth middleware
-            const userId = req.user ? req.user._id : null; 
-
-            if (!name) {
-                name = req.file.originalname.split('.')[0];
+            let { name, directory, userId } = req.body;
+            
+            // FIX: Robustly extract the user ID regardless of how the token is structured
+            let finalUserId = null;
+            if (req.user) {
+                finalUserId = req.user._id || req.user.id || req.user.userId;
+            }
+            // If middleware failed but Flutter passed the ID in the body, use it
+            if (!finalUserId && userId) {
+                finalUserId = userId;
             }
 
-            if (!directory) {
-                directory = 'public';
-            }
+            if (!name) name = req.file.originalname.split('.')[0];
+            if (!directory) directory = 'public';
 
             const ext = path.extname(req.file.originalname);
             const finalName = name + ext;
@@ -53,7 +60,7 @@ class FileController {
                 contentType: req.file.mimetype,
                 size: req.file.size,
                 directory: directory,
-                user: userId // Save the association
+                user: finalUserId // Now safely attached
             });
 
             await newFile.save();
@@ -63,7 +70,7 @@ class FileController {
                 path: directory + '/' + finalName,
                 size: req.file.size,
                 mimetype: req.file.mimetype,
-                user: userId
+                user: finalUserId
             };
 
             return res.status(200).send(ApiResponse.success('File uploaded successfully', uploadedFile));
@@ -97,7 +104,6 @@ class FileController {
             
             if (!file) return res.status(404).send(ApiResponse.error('File not found'));
 
-            // Enable PDFs to open directly in the browser instead of forcing a download
             if (file.contentType === 'application/pdf') {
                 res.setHeader('Content-Disposition', `inline; filename="${file.name}"`);
             }

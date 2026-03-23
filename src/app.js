@@ -18,6 +18,7 @@ import fileRoute from "./api/routes/file.route.js";
 import paymentRoute from './api/routes/payment.route.js';
 import consultationRoute from "./api/routes/consultation.route.js";
 import adminClaimRoute from "./api/routes/admin_claim.route.js";
+import productRouter from './api/routes/product.route.js';
 
 import webRouter from './web/web.js';
 import multer from "multer";
@@ -92,6 +93,7 @@ app.use(`${api}/file`, authenticateRequest, fileRoute);
 
 app.use(`${api}/payment`, paymentRoute);
 
+app.use(`${api}/products`, authenticateRequest, productRouter); 
 app.use(`${api}/consultations`, authenticateRequest, consultationRoute);
 app.use(`/api/consultations`, authenticateRequest, consultationRoute);
 app.use(`/admin/api/claims`, authenticateRequest, adminClaimRoute);

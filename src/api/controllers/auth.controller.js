@@ -68,8 +68,12 @@ class AuthController {
             await user.save({ validation: false })
 
             const updatedUser = await User.findById(user.id).select("-__v -password");
+            const userData = updatedUser.toObject();
+            if (userData.claimed_free_consultations === undefined || userData.claimed_free_consultations === null) {
+                userData.claimed_free_consultations = 0;
+            }
 
-            return res.status(200).json(ApiResponse.success(res_message, updatedUser))
+            return res.status(200).json(ApiResponse.success(res_message, userData))
 
         } catch (error) {
 
@@ -117,11 +121,15 @@ class AuthController {
             await existingUser.save({ validation: false })
 
             const updatedUser = await User.findById(existingUser.id).select("-__v -password");
+            const userData = updatedUser.toObject();
+            if (userData.claimed_free_consultations === undefined || userData.claimed_free_consultations === null) {
+                userData.claimed_free_consultations = 0;
+            }
 
             // Set the token in cookies
-            res.cookie('token', updatedUser.token, { httpOnly: true });
+            res.cookie('token', userData.token, { httpOnly: true });
 
-            return res.status(200).json(ApiResponse.success(res_message, updatedUser))
+            return res.status(200).json(ApiResponse.success(res_message, userData))
 
         } catch (error) {
 
@@ -142,10 +150,14 @@ class AuthController {
                 return res.status(400).json(ApiResponse.error('Invalid User'))
 
             const existingUser = await User.findById(user_id).select("-__v -password")
+            const userData = existingUser.toObject();
+            if (userData.claimed_free_consultations === undefined || userData.claimed_free_consultations === null) {
+                userData.claimed_free_consultations = 0;
+            }
 
-            res.cookie('token', existingUser.token, { httpOnly: true });
+            res.cookie('token', userData.token, { httpOnly: true });
 
-            return res.status(200).json(ApiResponse.success('User Verified', existingUser))
+            return res.status(200).json(ApiResponse.success('User Verified', userData))
 
         } catch (error) {
 

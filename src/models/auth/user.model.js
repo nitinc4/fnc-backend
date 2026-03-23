@@ -43,6 +43,11 @@ const userSchema = mongoose.Schema({
             required: true,
             default: 0,
         },
+        claimed_free_consultations: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
         status_id: {   // 0 - no profile, 1 - has profile,
             type: Number,
             required: true,

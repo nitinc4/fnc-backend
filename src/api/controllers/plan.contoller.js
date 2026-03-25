@@ -49,21 +49,15 @@ class PlanController {
 
             }
 
-            if (!diet_plan) {
-                return res.status(400).json(ApiResponse.error('Diet plan is required'))
-            }
-
+            let dietPlan = null;
             if (diet_plan) {
                 if (!mongoose.Types.ObjectId.isValid(diet_plan))
                     return res.status(400).json(ApiResponse.error('Invalid diet plan id'))
+                
+                dietPlan = await DietPlan.findById(diet_plan)
+                if (!dietPlan)
+                    return res.status(400).json(ApiResponse.error('Diet plan not found'))
             }
-
-            //get diet plan
-
-            const dietPlan = await DietPlan.findById(diet_plan)
-
-            if (!dietPlan)
-                return res.status(400).json(ApiResponse.error('Diet plan not found'))
 
             console.log(images)
 

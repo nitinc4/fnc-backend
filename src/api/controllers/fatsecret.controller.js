@@ -126,6 +126,40 @@ class FatSecretController {
             return res.status(500).json(ApiResponse.error(error.message || 'Internal server error while fetching recommendations'));
         }
     }
+
+    /**
+     * Search foods by expression
+     */
+    static async search(req, res) {
+        const { name } = req.query;
+
+        try {
+            if (!name) {
+                return res.status(400).json(ApiResponse.error('Search expression (name) is required'));
+            }
+
+            const foods = await fatSecretUtil.searchFoods(name, 20);
+            
+            // Map basic search results to standard format
+            const results = (foods || []).map(food => ({
+                id: food.food_id,
+                name: food.food_name,
+                brand: food.brand_name || 'Generic',
+                type: food.food_type,
+                // These will be null unless we call getFoodDetails for every item (slow)
+                // The frontend hardening handles these missing fields gracefully
+                calories: null,
+                nutrients: null,
+                serving_description: food.food_description || ''
+            }));
+
+            return res.status(200).json(ApiResponse.success('Foods retrieved successfully', results));
+
+        } catch (error) {
+            console.error('FatSecret Search Controller Error:', error);
+            return res.status(500).json(ApiResponse.error(error.message || 'Internal server error while searching foods'));
+        }
+    }
 }
 
 export default FatSecretController;

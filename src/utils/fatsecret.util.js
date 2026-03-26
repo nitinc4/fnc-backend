@@ -1,88 +1,112 @@
 import axios from 'axios';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 class FatSecretUtil {
     constructor() {
-        this.clientId = process.env.FATSECRET_CLIENT_ID;
-        this.clientSecret = process.env.FATSECRET_CLIENT_SECRET;
-        this.tokenUrl = 'https://oauth.fatsecret.com/connect/token';
+        this.consumerKey = process.env.FATSECRET_CLIENT_ID;
+        this.consumerSecret = process.env.FATSECRET_CLIENT_SECRET;
         this.apiUrl = 'https://platform.fatsecret.com/rest/server.api';
-        this.accessToken = null;
-        this.tokenExpiry = null;
     }
 
     /**
-     * Get or refresh OAuth 2.0 access token
+     * RFC 3986 percentage encoding
      */
-    async getAccessToken() {
-        // Return cached token if it's still valid (with 1-minute buffer)
-        if (this.accessToken && this.tokenExpiry && Date.now() < (this.tokenExpiry - 60000)) {
-            return this.accessToken;
-        }
-
-        try {
-            const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-            const response = await axios.post(this.tokenUrl, 'grant_type=client_credentials&scope=basic', {
-                headers: {
-                    'Authorization': `Basic ${credentials}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-            });
-
-            const { access_token, expires_in } = response.data;
-            this.accessToken = access_token;
-            this.tokenExpiry = Date.now() + (expires_in * 1000);
-            
-            return this.accessToken;
-        } catch (error) {
-            console.error('FatSecret OAuth Error:', error.response?.data || error.message);
-            throw new Error('Failed to retrieve FatSecret access token');
-        }
+    _encode(str) {
+        if (!str) return '';
+        return encodeURIComponent(str)
+            .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
     }
 
     /**
-     * Search foods by expression
+     * Generate OAuth 1.0 HMAC-SHA1 signature
+     */
+    _generateSignature(method, url, params) {
+        // 1. Collect and sort parameters
+        const sortedParams = Object.keys(params)
+            .sort()
+            .map(key => `${this._encode(key)}=${this._encode(params[key].toString())}`)
+            .join('&');
+
+        // 2. Construct signature base string
+        const baseString = [
+            method.toUpperCase(),
+            this._encode(url),
+            this._encode(sortedParams)
+        ].join('&');
+
+        // 3. Construct signing key (ConsumerSecret & TokenSecret - for 2-legged TokenSecret is empty)
+        const signingKey = `${this._encode(this.consumerSecret)}&`;
+
+        // 4. Calculate HMAC-SHA1
+        return crypto
+            .createHmac('sha1', signingKey)
+            .update(baseString)
+            .digest('base64');
+    }
+
+    /**
+     * Prepare signed parameters for OAuth 1.0 request
+     */
+    _getSignedParams(apiMethod, apiParams = {}) {
+        const oauthParams = {
+            oauth_consumer_key: this.consumerKey,
+            oauth_nonce: Math.random().toString(36).substring(2),
+            oauth_signature_method: 'HMAC-SHA1',
+            oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+            oauth_version: '1.0',
+            method: apiMethod,
+            format: 'json',
+            ...apiParams
+        };
+
+        const signature = this._generateSignature('GET', this.apiUrl, oauthParams);
+        return { ...oauthParams, oauth_signature: signature };
+    }
+
+    /**
+     * Search foods by expression (OAuth 1.0 Signed Request)
      */
     async searchFoods(searchExpression, maxResults = 20) {
-        const token = await this.getAccessToken();
         try {
-            const response = await axios.get(this.apiUrl, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: {
-                    method: 'foods.search',
-                    search_expression: searchExpression,
-                    format: 'json',
-                    max_results: maxResults,
-                },
+            const params = this._getSignedParams('foods.search', {
+                search_expression: searchExpression,
+                max_results: maxResults,
             });
+
+            const response = await axios.get(this.apiUrl, { params });
+
+            if (response.data.error) {
+                throw new Error(`FatSecret API Error: ${response.data.error.message} (Code: ${response.data.error.code})`);
+            }
 
             return response.data.foods?.food || [];
         } catch (error) {
-            console.error('FatSecret Search Error:', error.response?.data || error.message);
+            console.error('FatSecret Search Error:', error.message);
             throw new Error(`Failed to search foods on FatSecret: ${error.message}`);
         }
     }
 
     /**
-     * Get detailed food information including nutrition facts
+     * Get detailed food information (OAuth 1.0 Signed Request)
      */
     async getFoodDetails(foodId) {
-        const token = await this.getAccessToken();
         try {
-            const response = await axios.get(this.apiUrl, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: {
-                    method: 'food.get.v2',
-                    food_id: foodId,
-                    format: 'json',
-                },
+            const params = this._getSignedParams('food.get.v2', {
+                food_id: foodId,
             });
+
+            const response = await axios.get(this.apiUrl, { params });
+
+            if (response.data.error) {
+                throw new Error(`FatSecret API Error: ${response.data.error.message} (Code: ${response.data.error.code})`);
+            }
 
             return response.data.food;
         } catch (error) {
-            console.error('FatSecret Details Error:', error.response?.data || error.message);
+            console.error('FatSecret Details Error:', error.message);
             throw new Error(`Failed to get food details from FatSecret: ${error.message}`);
         }
     }

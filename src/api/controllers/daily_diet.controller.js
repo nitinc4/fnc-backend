@@ -715,6 +715,7 @@ class DailyDietController {
      * If it's a FatSecret ID and not in our DB, it fetches and creates it.
      */
     static async resolveFoodItem(foodId) {
+        if (!foodId || foodId === '') return null;
         try {
             // 1. Check if it's a valid MongoDB ID
             if (mongoose.Types.ObjectId.isValid(foodId)) {

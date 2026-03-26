@@ -6,6 +6,8 @@ import {User} from "../../models/auth/user.model.js";
 import {Food} from "../../models/food/food.model.js";
 import {UserProfile} from "../../models/profile/user_profile.model.js";
 import {Meal} from "../../models/meal/meal.model.js";
+import {Nutrient} from "../../models/nutrient.model.js";
+import fatSecretUtil from "../../utils/fatsecret.util.js";
 
 class DailyDietController {
 
@@ -62,18 +64,14 @@ class DailyDietController {
             if (breakfast) {
                 //add breakfast meal plan
                 for (let meal of breakfast) {
-                    if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                        return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
+                    const foodData = await DailyDietController.resolveFoodItem(meal.food_id);
+                    if (!foodData)
+                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
 
                     if (!meal.quantity)
                         return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
-                    const foodData = await Food.findById(meal.food_id)
-                    if (!foodData)
-                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
                     meal.food_id = foodData
-
                     breakfastList.push(meal)
                 }
             }
@@ -84,18 +82,14 @@ class DailyDietController {
             if (lunch) {
                 //add lunch meal plan
                 for (let meal of lunch) {
-                    if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                        return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
+                    const foodData = await DailyDietController.resolveFoodItem(meal.food_id);
+                    if (!foodData)
+                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
 
                     if (!meal.quantity)
                         return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
-                    const foodData = await Food.findById(meal.food_id)
-                    if (!foodData)
-                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
                     meal.food_id = foodData
-
                     lunchList.push(meal)
                 }
             }
@@ -105,18 +99,14 @@ class DailyDietController {
             if (dinner) {
                 //add dinner meal plan
                 for (let meal of dinner) {
-                    if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                        return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
+                    const foodData = await DailyDietController.resolveFoodItem(meal.food_id);
+                    if (!foodData)
+                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
 
                     if (!meal.quantity)
                         return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
-                    const foodData = await Food.findById(meal.food_id)
-                    if (!foodData)
-                        return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
                     meal.food_id = foodData
-
                     dinnerList.push(meal)
                 }
             }
@@ -291,18 +281,14 @@ class DailyDietController {
                     let breakfastList = []
                     //add breakfast meal plan
                     for (let meal of breakfast) {
-                        if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                            return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
+                        const foodData = await DailyDietController.resolveFoodItem(meal.food_id);
+                        if (!foodData)
+                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
 
                         if (!meal.quantity)
                             return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
-                        const foodData = await Food.findById(meal.food_id)
-                        if (!foodData)
-                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
                         meal.food_id = foodData
-
                         breakfastList.push(meal)
                     }
 
@@ -317,18 +303,14 @@ class DailyDietController {
                     //add lunch meal plan
                     let lunchList = []
                     for (let meal of lunch) {
-                        if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                            return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
+                        const foodData = await DailyDietController.resolveFoodItem(meal.food_id);
+                        if (!foodData)
+                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
 
                         if (!meal.quantity)
                             return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
-                        const foodData = await Food.findById(meal.food_id)
-                        if (!foodData)
-                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
                         meal.food_id = foodData
-
                         lunchList.push(meal)
                     }
 
@@ -345,18 +327,14 @@ class DailyDietController {
                     //add dinner meal plan
                     let dinnerList = []
                     for (let meal of dinner) {
-                        if (mongoose.Types.ObjectId.isValid(meal.food_id) === false)
-                            return res.status(400).send(ApiResponse.error(`Invalid food id: ${meal.food_id}`))
+                        const foodData = await DailyDietController.resolveFoodItem(meal.food_id);
+                        if (!foodData)
+                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
 
                         if (!meal.quantity)
                             return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
-                        const foodData = await Food.findById(meal.food_id)
-                        if (!foodData)
-                            return res.status(400).send(ApiResponse.error(`Food with id ${meal.food_id} not found`))
-
                         meal.food_id = foodData
-
                         dinnerList.push(meal)
                     }
 
@@ -730,8 +708,74 @@ class DailyDietController {
 
         }
         return responseObj
+    }
 
+    /**
+     * Resolves a food_id (either MongoDB ObjectId or FatSecret ID) to a local Food document.
+     * If it's a FatSecret ID and not in our DB, it fetches and creates it.
+     */
+    static async resolveFoodItem(foodId) {
+        try {
+            // 1. Check if it's a valid MongoDB ID
+            if (mongoose.Types.ObjectId.isValid(foodId)) {
+                return await Food.findById(foodId);
+            }
 
+            // 2. Not a MongoDB ID, check if it's a FatSecret ID (numeric string)
+            if (!/^\d+$/.test(foodId)) return null;
+
+            // 3. Check if we already have this FatSecret food cached
+            let food = await Food.findOne({ externalId: foodId });
+            if (food) return food;
+
+            // 4. Not cached, fetch details from FatSecret
+            console.log(`Auto-provisioning FatSecret food: ${foodId}`);
+            const fsFood = await fatSecretUtil.getFoodDetails(foodId);
+            if (!fsFood) return null;
+
+            const servingsData = Array.isArray(fsFood.servings.serving) ? fsFood.servings.serving[0] : fsFood.servings.serving;
+            
+            // 5. Map nutrients to local Nutrient IDs
+            const nutritionMapping = [
+                { name: 'protein', value: parseFloat(servingsData.protein || 0) },
+                { name: 'fat', value: parseFloat(servingsData.fat || 0) },
+                { name: 'carbohydrate', value: parseFloat(servingsData.carbohydrate || 0) },
+                { name: 'fiber', value: parseFloat(servingsData.fiber || 0) }
+            ];
+
+            const foodNutrients = [];
+            for (const item of nutritionMapping) {
+                const nutrient = await Nutrient.findOne({ name: item.name });
+                if (nutrient) {
+                    foodNutrients.push({
+                        nutrient_id: nutrient._id,
+                        quantity: item.value
+                    });
+                }
+            }
+
+            // 6. Get all meal IDs to link this food to
+            const allMeals = await Meal.find({});
+            const mealIds = allMeals.map(m => m._id);
+
+            // 7. Create local food entry
+            const newFood = await Food.create({
+                externalId: foodId,
+                name: fsFood.food_name,
+                description: fsFood.brand_name || 'Generic',
+                meals: mealIds,
+                nutrients_per_quantity: parseFloat(servingsData.metric_serving_amount || 100),
+                calories_per_quantity: parseFloat(servingsData.calories || 0),
+                serving: 1, // unit
+                nutrients: foodNutrients
+            });
+
+            return newFood;
+
+        } catch (error) {
+            console.error('Error in resolveFoodItem:', error);
+            return null;
+        }
     }
 }
 

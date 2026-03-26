@@ -42,6 +42,11 @@ const foodSchema = mongoose.Schema({
     nutrients: [
         foodNutrientSchema
     ],
+    externalId: {
+        type: String,
+        unique: true,
+        sparse: true,
+    }
 }, {timestamps: true});
 
 export const Food = mongoose.model("Food", foodSchema);

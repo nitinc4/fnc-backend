@@ -1,5 +1,7 @@
 import ApiResponse from "../../utils/api_response.js";
 import fatSecretUtil from "../../utils/fatsecret.util.js";
+import { Nutrient } from "../../models/nutrient.model.js";
+import { Meal } from "../../models/meal/meal.model.js";
 
 const HEALTH_CONSTRAINTS = {
     'Diabetes': {
@@ -158,6 +160,56 @@ class FatSecretController {
         } catch (error) {
             console.error('FatSecret Search Controller Error:', error);
             return res.status(500).json(ApiResponse.error(error.message || 'Internal server error while searching foods'));
+        }
+    }
+
+    /**
+     * Get full details for a FatSecret food
+     */
+    static async getFoodDetails(req, res) {
+        const { id } = req.params;
+
+        try {
+            const food = await fatSecretUtil.getFoodDetails(id);
+            if (!food) {
+                return res.status(404).json(ApiResponse.error('Food not found on FatSecret'));
+            }
+
+            const servingsData = Array.isArray(food.servings.serving) ? food.servings.serving[0] : food.servings.serving;
+            
+            const calories = parseFloat(servingsData.calories);
+            const protein = parseFloat(servingsData.protein || 0);
+            const carbs = parseFloat(servingsData.carbohydrate || 0);
+            const fat = parseFloat(servingsData.fat || 0);
+            const fiber = parseFloat(servingsData.fiber || 0);
+            const sugar = parseFloat(servingsData.sugar || 0);
+            const sodium = parseFloat(servingsData.sodium || 0);
+
+            const result = {
+                id: food.food_id,
+                name: food.food_name,
+                brand: food.brand_name || 'Generic',
+                type: food.food_type,
+                calories,
+                nutrients: {
+                    protein,
+                    carbage: carbs, // Frontend model might use 'carbs' but backend 'DailyDiet' often looks for specific names
+                    carbs,
+                    fat,
+                    fiber,
+                    sugar,
+                    sodium
+                },
+                serving_description: servingsData.serving_description,
+                metric_serving_amount: servingsData.metric_serving_amount,
+                metric_serving_unit: servingsData.metric_serving_unit
+            };
+
+            return res.status(200).json(ApiResponse.success('Food details retrieved successfully', result));
+
+        } catch (error) {
+            console.error('FatSecret Details Controller Error:', error);
+            return res.status(500).json(ApiResponse.error(error.message || 'Error fetching food details'));
         }
     }
 }

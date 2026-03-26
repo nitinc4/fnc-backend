@@ -143,17 +143,35 @@ class FatSecretController {
             const foods = await fatSecretUtil.searchFoods(name, 20);
             
             // Map basic search results to standard format
-            const results = (foods || []).map(food => ({
-                id: food.food_id,
-                name: food.food_name,
-                brand: food.brand_name || 'Generic',
-                type: food.food_type,
-                // These will be null unless we call getFoodDetails for every item (slow)
-                // The frontend hardening handles these missing fields gracefully
-                calories: null,
-                nutrients: null,
-                serving_description: food.food_description || ''
-            }));
+            const results = (foods || []).map(food => {
+                // Parse description for basic calories/macros
+                // Example: "Per 100g - Calories: 155kcal | Fat: 10.61g | Carbs: 1.12g | Protein: 12.58g"
+                const desc = food.food_description || '';
+                const calMatch = desc.match(/Calories:\s*(\d+)kcal/i);
+                const fatMatch = desc.match(/Fat:\s*([\d.]+)g/i);
+                const carbMatch = desc.match(/Carbs:\s*([\d.]+)g/i);
+                const proteinMatch = desc.match(/Protein:\s*([\d.]+)g/i);
+
+                const calories = calMatch ? parseFloat(calMatch[1]) : 0;
+                const fat = fatMatch ? parseFloat(fatMatch[1]) : 0;
+                const carbs = carbMatch ? parseFloat(carbMatch[1]) : 0;
+                const protein = proteinMatch ? parseFloat(proteinMatch[1]) : 0;
+
+                return {
+                    id: food.food_id,
+                    name: food.food_name,
+                    brand: food.brand_name || 'Generic',
+                    type: food.food_type,
+                    calories,
+                    nutrients: {
+                        protein,
+                        carbs,
+                        fat, // Added fat
+                        fiber: 0
+                    },
+                    serving_description: food.food_description || ''
+                };
+            });
 
             return res.status(200).json(ApiResponse.success('Foods retrieved successfully', results));
 
@@ -177,7 +195,7 @@ class FatSecretController {
 
             const servingsData = Array.isArray(food.servings.serving) ? food.servings.serving[0] : food.servings.serving;
             
-            const calories = parseFloat(servingsData.calories);
+            const calories = parseFloat(servingsData.calories || 0);
             const protein = parseFloat(servingsData.protein || 0);
             const carbs = parseFloat(servingsData.carbohydrate || 0);
             const fat = parseFloat(servingsData.fat || 0);
@@ -193,12 +211,22 @@ class FatSecretController {
                 calories,
                 nutrients: {
                     protein,
-                    carbage: carbs, // Frontend model might use 'carbs' but backend 'DailyDiet' often looks for specific names
+                    carbohydrate: carbs,
                     carbs,
-                    fat,
+                    fat, // Fixed total fat
                     fiber,
                     sugar,
-                    sodium
+                    sodium,
+                    saturated_fat: parseFloat(servingsData.saturated_fat || 0),
+                    cholesterol: parseFloat(servingsData.cholesterol || 0)
+                },
+                // All other nutrients as microns
+                micros: {
+                    potassium: parseFloat(servingsData.potassium || 0),
+                    calcium: parseFloat(servingsData.calcium || 0),
+                    iron: parseFloat(servingsData.iron || 0),
+                    vitamin_a: parseFloat(servingsData.vitamin_a || 0),
+                    vitamin_c: parseFloat(servingsData.vitamin_c || 0),
                 },
                 serving_description: servingsData.serving_description,
                 metric_serving_amount: servingsData.metric_serving_amount,

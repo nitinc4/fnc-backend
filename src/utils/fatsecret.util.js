@@ -59,6 +59,7 @@ class FatSecretUtil {
             oauth_version: '1.0',
             method: apiMethod,
             format: 'json',
+            region: 'IN',
             ...apiParams
         };
 

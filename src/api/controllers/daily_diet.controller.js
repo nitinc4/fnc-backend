@@ -727,19 +727,21 @@ class DailyDietController {
 
             // 3. Check if we already have this FatSecret food cached
             let food = await Food.findOne({ externalId: foodId });
-            if (food) return food;
+            
+            // SELF-HEALING: If food exists but macro data is incomplete (usually only fiber was matched)
+            if (food && food.nutrients && food.nutrients.length >= 4) {
+                return food;
+            }
 
-            // 4. Not cached, fetch details from FatSecret
-            console.log(`Auto-provisioning FatSecret food: ${foodId}`);
+            // 4. Provision or Re-provision details from FatSecret
+            console.log(`${food ? 'Fixing up' : 'Auto-provisioning'} FatSecret food: ${foodId}`);
             const fsFood = await fatSecretUtil.getFoodDetails(foodId);
-            if (!fsFood) return null;
+            if (!fsFood) return food; // Return whatever we have if FS fails
 
             const servingsData = Array.isArray(fsFood.servings.serving) ? fsFood.servings.serving[0] : fsFood.servings.serving;
             
-            // 5. Map nutrients to local Nutrient IDs (Robust Alias & Contains Matching)
+            // 5. Map nutrients to local Nutrient IDs (Self-Healing & Auto-Creation)
             const allNutrients = await Nutrient.find({});
-            console.log(`[DEBUG] Available nutrients in DB: ${allNutrients.map(n => n.name).join(", ")}`);
-            
             const nutritionMapping = [
                 { match: 'protein', value: parseFloat(servingsData.protein || 0) },
                 { match: 'fat', value: parseFloat(servingsData.fat || 0) },
@@ -749,39 +751,40 @@ class DailyDietController {
 
             const foodNutrients = [];
             for (const item of nutritionMapping) {
-                // Aggressive matching: Check if DB nutrient name contains our target string (e.g. "protein")
-                const matchingNutrient = allNutrients.find(n => {
-                    const dbName = n.name.toLowerCase();
-                    return dbName.includes(item.match);
-                });
+                let matchingNutrient = allNutrients.find(n => n.name.toLowerCase().includes(item.match));
                 
-                if (matchingNutrient) {
-                    foodNutrients.push({
-                        nutrient_id: matchingNutrient._id,
-                        quantity: item.value
-                    });
-                } else {
-                    console.log(`[DEBUG] Warning: No DB match containing: "${item.match}"`);
+                // AUTO-CREATE MISSING NUTRIENT
+                if (!matchingNutrient) {
+                    console.log(`[DEBUG] Creating missing nutrient in DB: ${item.match}`);
+                    matchingNutrient = await Nutrient.create({ name: item.match, type: 'macro' });
                 }
+                
+                foodNutrients.push({
+                    nutrient_id: matchingNutrient._id,
+                    quantity: item.value
+                });
             }
 
             // 6. Get all meal IDs to link this food to
             const allMeals = await Meal.find({});
             const mealIds = allMeals.map(m => m._id);
 
-            // 7. Create local food entry
-            const newFood = await Food.create({
-                externalId: foodId,
-                name: fsFood.food_name,
-                description: fsFood.brand_name || 'Generic',
-                meals: mealIds,
-                nutrients_per_quantity: parseFloat(servingsData.metric_serving_amount || 100),
-                calories_per_quantity: parseFloat(servingsData.calories || 0),
-                serving: 1, // unit
-                nutrients: foodNutrients
-            });
+            // 7. Create or Update local food entry
+            const updatedFood = await Food.findOneAndUpdate(
+                { externalId: foodId },
+                {
+                    name: fsFood.food_name,
+                    description: fsFood.brand_name || 'Generic',
+                    meals: mealIds,
+                    nutrients_per_quantity: parseFloat(servingsData.metric_serving_amount || 100),
+                    calories_per_quantity: parseFloat(servingsData.calories || 0),
+                    serving: 1, 
+                    nutrients: foodNutrients
+                },
+                { upsert: true, new: true }
+            );
 
-            return newFood;
+            return updatedFood;
 
         } catch (error) {
             console.error('Error in resolveFoodItem:', error);

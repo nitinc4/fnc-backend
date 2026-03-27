@@ -736,22 +736,31 @@ class DailyDietController {
 
             const servingsData = Array.isArray(fsFood.servings.serving) ? fsFood.servings.serving[0] : fsFood.servings.serving;
             
-            // 5. Map nutrients to local Nutrient IDs
+            // 5. Map nutrients to local Nutrient IDs (Robust Alias Matching)
+            const allNutrients = await Nutrient.find({});
+            console.log(`[DEBUG] Available nutrients in DB: ${allNutrients.map(n => n.name).join(", ")}`);
+            
             const nutritionMapping = [
-                { name: 'protein', value: parseFloat(servingsData.protein || 0) },
-                { name: 'fat', value: parseFloat(servingsData.fat || 0) },
-                { name: 'carbohydrate', value: parseFloat(servingsData.carbohydrate || 0) },
-                { name: 'fiber', value: parseFloat(servingsData.fiber || 0) }
+                { aliases: ['protein', 'proteins'], value: parseFloat(servingsData.protein || 0) },
+                { aliases: ['fat', 'fats', 'lipid', 'total fat', 'total_fat'], value: parseFloat(servingsData.fat || 0) },
+                { aliases: ['carbohydrate', 'carbohydrates', 'carbs', 'total carbohydrate', 'total_carbohydrate'], value: parseFloat(servingsData.carbohydrate || 0) },
+                { aliases: ['fiber', 'dietary fiber', 'dietary_fiber'], value: parseFloat(servingsData.fiber || 0) }
             ];
 
             const foodNutrients = [];
             for (const item of nutritionMapping) {
-                const nutrient = await Nutrient.findOne({ name: item.name });
-                if (nutrient) {
+                // Find matching nutrient from DB
+                const matchingNutrient = allNutrients.find(n => 
+                    item.aliases.includes(n.name.toLowerCase())
+                );
+                
+                if (matchingNutrient) {
                     foodNutrients.push({
-                        nutrient_id: nutrient._id,
+                        nutrient_id: matchingNutrient._id,
                         quantity: item.value
                     });
+                } else {
+                    console.log(`[DEBUG] Warning: No DB match for nutrient aliases: ${item.aliases.join(", ")}`);
                 }
             }
 

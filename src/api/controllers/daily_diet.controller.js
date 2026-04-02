@@ -511,28 +511,27 @@ class DailyDietController {
         let planFiber = 0;
 
         function addPlanNutrient(food) {
-            const perQuantity = food.food_id.nutrients_per_quantity
+            if (!food || !food.food_id) {
+                console.warn(`[DailyDiet] Found null food_id in diet plan item`);
+                return;
+            }
+            const perQuantity = food.food_id.nutrients_per_quantity || 100;
 
-            for (let nutrient of food.food_id.nutrients) {
-                const unitQuantity = nutrient.quantity / perQuantity
-                console.log(nutrient)
+            if (Array.isArray(food.food_id.nutrients)) {
+                for (let nutrient of food.food_id.nutrients) {
+                    if (!nutrient || !nutrient.nutrient_id) continue;
+                    const unitQuantity = nutrient.quantity / perQuantity;
 
-                if (nutrient.nutrient_id.name === 'protein') {
-                    planProtein += unitQuantity * food.quantity
-
-
-                } else if (nutrient.nutrient_id.name === 'fat') {
-
-                    planFat += unitQuantity * food.quantity
-
-                } else if (nutrient.nutrient_id.name === 'carbohydrate') {
-                    planCarbs += unitQuantity * food.quantity
-
-
-                } else if (nutrient.nutrient_id.name === 'fiber') {
-                    planFiber += unitQuantity * food.quantity
+                    if (nutrient.nutrient_id.name === 'protein') {
+                        planProtein += unitQuantity * (food.quantity || 0);
+                    } else if (nutrient.nutrient_id.name === 'fat') {
+                        planFat += unitQuantity * (food.quantity || 0);
+                    } else if (nutrient.nutrient_id.name === 'carbohydrate') {
+                        planCarbs += unitQuantity * (food.quantity || 0);
+                    } else if (nutrient.nutrient_id.name === 'fiber') {
+                        planFiber += unitQuantity * (food.quantity || 0);
+                    }
                 }
-
             }
         }
 
@@ -565,12 +564,13 @@ class DailyDietController {
                     if (Array.isArray(dietPlan.breakfast)) {
                         //get timing
                         for (let food of dietPlan.breakfast) {
+                            if (!food || !food.food_id) continue;
 
                             //calculate nutrients
                             addPlanNutrient(food)
 
                             //calculate calories
-                            let foodCalPerGm = food.food_id.calories_per_quantity / food.food_id.nutrients_per_quantity
+                            let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
                             dietPlanBreakfastCal += food.quantity * foodCalPerGm
                             food.total_calories = Math.floor(food.quantity * foodCalPerGm)
 
@@ -586,12 +586,13 @@ class DailyDietController {
                     //lunch
                     if (Array.isArray(dietPlan.lunch)) {
                         for (let food of dietPlan.lunch) {
+                            if (!food || !food.food_id) continue;
 
                             //calculate nutrients
                             addPlanNutrient(food)
 
                             //calculate calories
-                            let foodCalPerGm = food.food_id.calories_per_quantity / food.food_id.nutrients_per_quantity
+                            let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
                             dietPlanLunchCal += food.quantity * foodCalPerGm
                             const foodItem = Object.assign(food._doc, {total_calories: Math.floor(food.quantity * foodCalPerGm)})
                             dietPlanLunchList.push(foodItem)
@@ -603,12 +604,13 @@ class DailyDietController {
                     //dinner
                     if (Array.isArray(dietPlan.dinner)) {
                         for (let food of dietPlan.dinner) {
+                            if (!food || !food.food_id) continue;
 
                             //calculate nutrients
                             addPlanNutrient(food)
 
                             //calculate calories
-                            let foodCalPerGm = food.food_id.calories_per_quantity / food.food_id.nutrients_per_quantity
+                            let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
                             dietPlanDinnerCal += food.quantity * foodCalPerGm
                             const foodItem = Object.assign(food._doc, {total_calories: Math.floor(food.quantity * foodCalPerGm)})
                             dietPlanDinnerList.push(foodItem)
@@ -659,24 +661,23 @@ class DailyDietController {
 
 
         function addDietNutrient(food) {
-            const perQuantity = food.food_id.nutrients_per_quantity
+            if (!food || !food.food_id) return;
+            const perQuantity = food.food_id.nutrients_per_quantity || 100;
 
-            for (let nutrient of food.food_id.nutrients) {
-                const unitQuantity = nutrient.quantity / perQuantity
-                if (nutrient.nutrient_id.name === 'protein') {
-                    dietProtein += unitQuantity * food.quantity
-
-                } else if (nutrient.nutrient_id.name === 'fat') {
-                    dietFat += unitQuantity * food.quantity
-
-                } else if (nutrient.nutrient_id.name === 'carbohydrate') {
-                    dietCarbs += unitQuantity * food.quantity
-
-
-                } else if (nutrient.nutrient_id.name === 'fiber') {
-                    dietFiber += unitQuantity * food.quantity
+            if (Array.isArray(food.food_id.nutrients)) {
+                for (let nutrient of food.food_id.nutrients) {
+                    if (!nutrient || !nutrient.nutrient_id) continue;
+                    const unitQuantity = nutrient.quantity / perQuantity;
+                    if (nutrient.nutrient_id.name === 'protein') {
+                        dietProtein += unitQuantity * (food.quantity || 0);
+                    } else if (nutrient.nutrient_id.name === 'fat') {
+                        dietFat += unitQuantity * (food.quantity || 0);
+                    } else if (nutrient.nutrient_id.name === 'carbohydrate') {
+                        dietCarbs += unitQuantity * (food.quantity || 0);
+                    } else if (nutrient.nutrient_id.name === 'fiber') {
+                        dietFiber += unitQuantity * (food.quantity || 0);
+                    }
                 }
-
             }
         }
 
@@ -696,12 +697,13 @@ class DailyDietController {
             let foodBreakFastCal = 0
             let foodBreakFastList = []
             for (let meal of userDiet.breakfast) {
+                if (!meal || !meal.food_id) continue;
 
                 //calculate nutrients
                 addDietNutrient(meal)
 
                 //calculate calories
-                let foodCalPerGm = meal.food_id.calories_per_quantity / meal.food_id.nutrients_per_quantity
+                let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
                 foodBreakFastCal += meal.quantity * foodCalPerGm
                 const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
                 foodBreakFastList.push(foodItem)
@@ -717,12 +719,13 @@ class DailyDietController {
             let foodLunchCal = 0
             let foodLunchList = []
             for (let meal of userDiet.lunch) {
+                if (!meal || !meal.food_id) continue;
 
                 //calculate nutrients
                 addDietNutrient(meal)
 
                 //calculate calories
-                let foodCalPerGm = meal.food_id.calories_per_quantity / meal.food_id.nutrients_per_quantity
+                let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
                 foodLunchCal += meal.quantity * foodCalPerGm
                 const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
                 foodLunchList.push(foodItem)
@@ -736,12 +739,13 @@ class DailyDietController {
             let foodDinnerCal = 0
             let foodDinnerList = []
             for (let meal of userDiet.dinner) {
+                if (!meal || !meal.food_id) continue;
 
                 //calculate nutrients
                 addDietNutrient(meal)
 
                 //calculate calories
-                let foodCalPerGm = meal.food_id.calories_per_quantity / meal.food_id.nutrients_per_quantity
+                let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
                 foodDinnerCal += meal.quantity * foodCalPerGm
                 const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
                 foodDinnerList.push(foodItem)

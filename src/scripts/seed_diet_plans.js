@@ -15,6 +15,37 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/fnc';
  */
 async function searchAndResolveFood(dishName) {
     try {
+        // SPECIAL CASE: Protein Shake (User requested exact values)
+        if (dishName.toLowerCase().includes('protein shake') || dishName.toLowerCase().includes('whey protein')) {
+            console.log(`[SEED] Injecting custom Protein Shake data`);
+            const allNutrients = await Nutrient.find({});
+            const mapping = [
+                { match: 'protein', value: 45.18 },
+                { match: 'fat', value: 0.36 },
+                { match: 'carb', value: 24.02 },
+                { match: 'fiber', value: 0 }
+            ];
+            const foodNutrients = [];
+            for (const item of mapping) {
+                let nObj = allNutrients.find(n => n.name.toLowerCase().includes(item.match));
+                if (!nObj) nObj = await Nutrient.create({ name: item.match, type: 'macro' });
+                foodNutrients.push({ nutrient_id: nObj._id, quantity: item.value });
+            }
+            const updatedFood = await Food.findOneAndUpdate(
+                { externalId: 'protein_shake_custom' },
+                {
+                    name: 'Protein Shake',
+                    description: 'Custom per 1 cup',
+                    nutrients_per_quantity: 1, // Treat '1' as 1 cup/serving
+                    calories_per_quantity: 257,
+                    serving: 1,
+                    nutrients: foodNutrients
+                },
+                { upsert: true, new: true }
+            );
+            return updatedFood._id;
+        }
+
         let food = await Food.findOne({ name: new RegExp(`^${dishName}$`, 'i') });
         if (food && food.nutrients && food.nutrients.length >= 3) {
              // Basic macro check for dessert placeholders (Puddings/Custards have high sugar, low protein)

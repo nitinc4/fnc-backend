@@ -92,7 +92,7 @@ async function seed() {
 
         const issues = await HealthIssue.find({});
         const variants = ['weight loss', 'weight gain', 'maintain weight'];
-        const preferences = ['veg', 'non-veg', 'vegan'];
+        const preferences = ['veg', 'non veg', 'vegan'];
 
         for (const issue of issues) {
             for (const variant of variants) {
@@ -109,7 +109,7 @@ async function seed() {
                         lunch.push({ food_id: resolvedFoods.LENTILS, quantity: 150 });
                         lunch.push({ food_id: resolvedFoods.MIXED_VEG, quantity: 100 });
                         dinner.push({ food_id: resolvedFoods.OATS, quantity: 80 });
-                    } else if (preference === 'non-veg') {
+                    } else if (preference === 'non veg') {
                         lunch.push({ food_id: resolvedFoods.CHICKEN_BREAST, quantity: 150 });
                         lunch.push({ food_id: resolvedFoods.MIXED_VEG, quantity: 100 });
                         dinner.push({ food_id: resolvedFoods.SALMON, quantity: 120 });

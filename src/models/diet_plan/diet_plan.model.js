@@ -17,7 +17,7 @@ const dietPlanSchema = new mongoose.Schema({
     },
     dietary_option: {
         type: String,
-        enum: ['veg', 'non-veg', 'vegan'],
+        enum: ['veg', 'non veg', 'vegan'],
         default: 'veg'
     },
     breakfast: [{

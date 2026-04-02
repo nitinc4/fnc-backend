@@ -161,13 +161,13 @@ class ProfileController {
                 if (healthIssue) healthIssuesList.push(healthIssue._id)
             }
 
-            let calculatedVariant = extractStr(req.body.variant) || 'Maintain Weight';
+            let calculatedVariant = extractStr(req.body.variant)?.toLowerCase() || 'maintain weight';
             const curWeight = extractNum(weight);
             const targetWeight = extractNum(target_weight);
             if (curWeight && targetWeight) {
-                if (curWeight > targetWeight + 0.5) calculatedVariant = 'Weight Loss';
-                else if (curWeight < targetWeight - 0.5) calculatedVariant = 'Weight Gain';
-                else calculatedVariant = 'Maintain Weight';
+                if (curWeight > targetWeight + 0.5) calculatedVariant = 'weight loss';
+                else if (curWeight < targetWeight - 0.5) calculatedVariant = 'weight gain';
+                else calculatedVariant = 'maintain weight';
             }
 
             const assignedDietPlanIds = await resolveDietPlans(healthIssuesList, diet_plans, user, {
@@ -276,11 +276,11 @@ class ProfileController {
                 existingUserProfile.has_social_discount = req.body.has_social_discount;
             }
 
-            let calculatedVariant = existingUserProfile.variant || 'Maintain Weight';
+            let calculatedVariant = (existingUserProfile.variant || 'maintain weight').toLowerCase();
             if (existingUserProfile.weight && existingUserProfile.target_weight) {
-                if (existingUserProfile.weight > existingUserProfile.target_weight + 0.5) calculatedVariant = 'Weight Loss';
-                else if (existingUserProfile.weight < existingUserProfile.target_weight - 0.5) calculatedVariant = 'Weight Gain';
-                else calculatedVariant = 'Maintain Weight';
+                if (existingUserProfile.weight > existingUserProfile.target_weight + 0.5) calculatedVariant = 'weight loss';
+                else if (existingUserProfile.weight < existingUserProfile.target_weight - 0.5) calculatedVariant = 'weight gain';
+                else calculatedVariant = 'maintain weight';
             }
             existingUserProfile.variant = calculatedVariant;
 

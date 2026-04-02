@@ -73,6 +73,10 @@ class DailyDietController {
                         return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
                     meal.food_id = foodData
+                    if (meal.total_calories === undefined || meal.total_calories === null) {
+                        const foodCalPerGm = (foodData.calories_per_quantity || 0) / (foodData.nutrients_per_quantity || 100);
+                        meal.total_calories = Math.round(meal.quantity * foodCalPerGm);
+                    }
                     breakfastList.push(meal)
                 }
             }
@@ -91,6 +95,10 @@ class DailyDietController {
                         return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
                     meal.food_id = foodData
+                    if (meal.total_calories === undefined || meal.total_calories === null) {
+                        const foodCalPerGm = (foodData.calories_per_quantity || 0) / (foodData.nutrients_per_quantity || 100);
+                        meal.total_calories = Math.round(meal.quantity * foodCalPerGm);
+                    }
                     lunchList.push(meal)
                 }
             }
@@ -108,6 +116,10 @@ class DailyDietController {
                         return res.status(400).send(ApiResponse.error(`meal { quantity } is required`))
 
                     meal.food_id = foodData
+                    if (meal.total_calories === undefined || meal.total_calories === null) {
+                        const foodCalPerGm = (foodData.calories_per_quantity || 0) / (foodData.nutrients_per_quantity || 100);
+                        meal.total_calories = Math.round(meal.quantity * foodCalPerGm);
+                    }
                     dinnerList.push(meal)
                 }
             }
@@ -703,9 +715,16 @@ class DailyDietController {
                 addDietNutrient(meal)
 
                 //calculate calories
-                let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
-                foodBreakFastCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.round(meal.quantity * foodCalPerGm)})
+                let finalCal = 0;
+                if (meal.total_calories !== undefined && meal.total_calories !== null) {
+                    finalCal = meal.total_calories;
+                } else {
+                    let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
+                    finalCal = Math.round(meal.quantity * foodCalPerGm)
+                }
+                
+                foodBreakFastCal += finalCal
+                const foodItem = Object.assign(meal._doc, {total_calories: finalCal})
                 foodBreakFastList.push(foodItem)
             }
             myData.breakfast = {
@@ -725,9 +744,15 @@ class DailyDietController {
                 addDietNutrient(meal)
 
                 //calculate calories
-                let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
-                foodLunchCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.round(meal.quantity * foodCalPerGm)})
+                let finalCal = 0;
+                if (meal.total_calories !== undefined && meal.total_calories !== null) {
+                    finalCal = meal.total_calories;
+                } else {
+                    let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
+                    finalCal = Math.round(meal.quantity * foodCalPerGm)
+                }
+                foodLunchCal += finalCal
+                const foodItem = Object.assign(meal._doc, {total_calories: finalCal})
                 foodLunchList.push(foodItem)
             }
             myData.lunch = {
@@ -745,9 +770,15 @@ class DailyDietController {
                 addDietNutrient(meal)
 
                 //calculate calories
-                let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
-                foodDinnerCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.round(meal.quantity * foodCalPerGm)})
+                let finalCal = 0;
+                if (meal.total_calories !== undefined && meal.total_calories !== null) {
+                    finalCal = meal.total_calories;
+                } else {
+                    let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
+                    finalCal = Math.round(meal.quantity * foodCalPerGm)
+                }
+                foodDinnerCal += finalCal
+                const foodItem = Object.assign(meal._doc, {total_calories: finalCal})
                 foodDinnerList.push(foodItem)
             }
             myData.dinner = {

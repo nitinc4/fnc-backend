@@ -166,8 +166,8 @@ class FatSecretController {
         const { name } = req.query;
 
         try {
-            if (!name) {
-                return res.status(400).json(ApiResponse.error('Search expression (name) is required'));
+            if (!name || name.trim() === "") {
+                return res.status(200).json(ApiResponse.success('No results found', []));
             }
 
             const foods = await fatSecretUtil.searchFoods(name, 20);

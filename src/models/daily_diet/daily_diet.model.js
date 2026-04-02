@@ -9,16 +9,19 @@ const dailyDietSchema = new mongoose.Schema({
     breakfast: [{
         food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
         quantity: { type: Number, default: 1 },
+        total_calories: { type: Number },
         unit: { type: String, default: 'unit' }
     }],
     lunch: [{
         food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
         quantity: { type: Number, default: 1 },
+        total_calories: { type: Number },
         unit: { type: String, default: 'unit' }
     }],
     dinner: [{
         food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
         quantity: { type: Number, default: 1 },
+        total_calories: { type: Number },
         unit: { type: String, default: 'unit' }
     }],
     water: {

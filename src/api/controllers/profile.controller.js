@@ -161,8 +161,17 @@ class ProfileController {
                 if (healthIssue) healthIssuesList.push(healthIssue._id)
             }
 
+            let calculatedVariant = extractStr(req.body.variant) || 'Maintain Weight';
+            const curWeight = extractNum(weight);
+            const targetWeight = extractNum(target_weight);
+            if (curWeight && targetWeight) {
+                if (curWeight > targetWeight + 0.5) calculatedVariant = 'Weight Loss';
+                else if (curWeight < targetWeight - 0.5) calculatedVariant = 'Weight Gain';
+                else calculatedVariant = 'Maintain Weight';
+            }
+
             const assignedDietPlanIds = await resolveDietPlans(healthIssuesList, diet_plans, user, {
-                variant: extractStr(req.body.variant),
+                variant: calculatedVariant,
                 dietary_option: extractStr(req.body.dietary_option)
             });
 
@@ -178,6 +187,8 @@ class ProfileController {
                 city: extractStr(city), 
                 state: extractStr(state), 
                 country: extractStr(country), 
+                variant: calculatedVariant,
+                dietary_option: extractStr(req.body.dietary_option),
                 health_issues: healthIssuesList,
                 diet_plans: assignedDietPlanIds
             })
@@ -264,6 +275,14 @@ class ProfileController {
             if (req.body.has_social_discount !== undefined) {
                 existingUserProfile.has_social_discount = req.body.has_social_discount;
             }
+
+            let calculatedVariant = existingUserProfile.variant || 'Maintain Weight';
+            if (existingUserProfile.weight && existingUserProfile.target_weight) {
+                if (existingUserProfile.weight > existingUserProfile.target_weight + 0.5) calculatedVariant = 'Weight Loss';
+                else if (existingUserProfile.weight < existingUserProfile.target_weight - 0.5) calculatedVariant = 'Weight Gain';
+                else calculatedVariant = 'Maintain Weight';
+            }
+            existingUserProfile.variant = calculatedVariant;
 
             const requestedPlans = diet_plans && Array.isArray(diet_plans) ? diet_plans : [];
             existingUserProfile.diet_plans = await resolveDietPlans(existingUserProfile.health_issues, requestedPlans, user, {

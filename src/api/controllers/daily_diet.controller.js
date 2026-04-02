@@ -810,11 +810,15 @@ class DailyDietController {
             // 4. Provision or Re-provision details from FatSecret
             console.log(`${food ? 'Fixing up' : 'Auto-provisioning'} FatSecret food: ${foodId}`);
             const fsFood = await fatSecretUtil.getFoodDetails(foodId);
-            if (!fsFood) return food; // Return whatever we have if FS fails
+            if (!fsFood || !fsFood.servings) return food; 
 
-            const servingsData = Array.isArray(fsFood.servings.serving) ? fsFood.servings.serving[0] : fsFood.servings.serving;
+            // BETTER SERVING SELECTION: Prefer a serving with a non-zero metric_serving_amount (g/ml)
+            const servingsList = Array.isArray(fsFood.servings.serving) ? fsFood.servings.serving : [fsFood.servings.serving];
+            const servingsData = servingsList.find(s => parseFloat(s.metric_serving_amount) > 1) || servingsList[0];
             
-            // 5. Map nutrients to local Nutrient IDs (Self-Healing & Auto-Creation)
+            console.log(`[DEBUG] Selected serving: ${servingsData.serving_description}, metric_amt: ${servingsData.metric_serving_amount}`);
+
+            // 5. Map nutrients to local Nutrient IDs
             const allNutrients = await Nutrient.find({});
             const nutritionMapping = [
                 { match: 'protein', value: parseFloat(servingsData.protein || 0) },
@@ -825,11 +829,9 @@ class DailyDietController {
 
             const foodNutrients = [];
             for (const item of nutritionMapping) {
-                let matchingNutrient = allNutrients.find(n => n.name.toLowerCase().includes(item.match));
+                let matchingNutrient = allNutrients.find(n => n.name.toLowerCase() === item.match.toLowerCase() || n.name.toLowerCase().includes(item.match));
                 
-                // AUTO-CREATE MISSING NUTRIENT
                 if (!matchingNutrient) {
-                    console.log(`[DEBUG] Creating missing nutrient in DB: ${item.match}`);
                     matchingNutrient = await Nutrient.create({ name: item.match, type: 'macro' });
                 }
                 
@@ -839,7 +841,7 @@ class DailyDietController {
                 });
             }
 
-            // 6. Get all meal IDs to link this food to
+            // 6. Get all meal IDs
             const allMeals = await Meal.find({});
             const mealIds = allMeals.map(m => m._id);
 

@@ -31,12 +31,17 @@ async function searchAndResolveFood(dishName) {
                 if (!nObj) nObj = await Nutrient.create({ name: item.match, type: 'macro' });
                 foodNutrients.push({ nutrient_id: nObj._id, quantity: item.value });
             }
+
+            // AVOID DUPLICATE KEY ERRORS: 
+            // The record might exist with a different externalId but the same name.
+            await Food.deleteOne({ name: 'Protein Shake' });
+
             const updatedFood = await Food.findOneAndUpdate(
                 { externalId: 'protein_shake_custom' },
                 {
                     name: 'Protein Shake',
-                    description: 'Custom per 1 cup',
-                    nutrients_per_quantity: 1, // Treat '1' as 1 cup/serving
+                    description: 'Custom per 1 cup (200g)',
+                    nutrients_per_quantity: 200, 
                     calories_per_quantity: 257,
                     serving: 1,
                     nutrients: foodNutrients
@@ -171,12 +176,24 @@ async function seed() {
             }}
         ];
 
-        const breakfastFoodId = await searchAndResolveFood('Whey Protein Powder Chocolate'); // Best for "Protein Shake"
+        const breakfastFoodId = await searchAndResolveFood('Protein Shake'); 
         
         for (const planInfo of DIET_DATA) {
-            const hIssue = await HealthIssue.findOne({ name: new RegExp(planInfo.name, 'i') });
+            // Try matching by name or split parts for flexibility (e.g. "PCOD / PCOS" matching "PCOS")
+            let hIssue = await HealthIssue.findOne({ name: new RegExp(planInfo.name, 'i') });
+            
             if (!hIssue) {
-                console.log(`[SEED] Health Issue ${planInfo.name} not found in DB, skipping.`);
+                // Fallback for special cases
+                if (planInfo.name.includes('/')) {
+                    const parts = planInfo.name.split('/').map(p => p.trim());
+                    hIssue = await HealthIssue.findOne({ name: { $in: parts.map(p => new RegExp(p, 'i')) } });
+                } else if (planInfo.name === 'BP') {
+                    hIssue = await HealthIssue.findOne({ name: /pressure|bp/i });
+                }
+            }
+
+            if (!hIssue) {
+                console.log(`[SEED] Health Issue ${planInfo.name} not found in DB even with fallback, skipping.`);
                 continue;
             }
 

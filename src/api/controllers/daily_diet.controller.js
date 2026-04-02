@@ -572,10 +572,10 @@ class DailyDietController {
                             //calculate calories
                             let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
                             dietPlanBreakfastCal += food.quantity * foodCalPerGm
-                            food.total_calories = Math.floor(food.quantity * foodCalPerGm)
+                            food.total_calories = Math.round(food.quantity * foodCalPerGm)
 
                             const foodItem = Object.assign(food._doc, {
-                                total_calories: Math.floor(food.quantity * foodCalPerGm),
+                                total_calories: Math.round(food.quantity * foodCalPerGm),
                             })
                             dietPlanBreakfastList.push(foodItem)
                         }
@@ -594,7 +594,7 @@ class DailyDietController {
                             //calculate calories
                             let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
                             dietPlanLunchCal += food.quantity * foodCalPerGm
-                            const foodItem = Object.assign(food._doc, {total_calories: Math.floor(food.quantity * foodCalPerGm)})
+                            const foodItem = Object.assign(food._doc, {total_calories: Math.round(food.quantity * foodCalPerGm)})
                             dietPlanLunchList.push(foodItem)
                         }
                     }
@@ -612,7 +612,7 @@ class DailyDietController {
                             //calculate calories
                             let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
                             dietPlanDinnerCal += food.quantity * foodCalPerGm
-                            const foodItem = Object.assign(food._doc, {total_calories: Math.floor(food.quantity * foodCalPerGm)})
+                            const foodItem = Object.assign(food._doc, {total_calories: Math.round(food.quantity * foodCalPerGm)})
                             dietPlanDinnerList.push(foodItem)
                         }
                     }
@@ -705,7 +705,7 @@ class DailyDietController {
                 //calculate calories
                 let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
                 foodBreakFastCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
+                const foodItem = Object.assign(meal._doc, {total_calories: Math.round(meal.quantity * foodCalPerGm)})
                 foodBreakFastList.push(foodItem)
             }
             myData.breakfast = {
@@ -727,7 +727,7 @@ class DailyDietController {
                 //calculate calories
                 let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
                 foodLunchCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
+                const foodItem = Object.assign(meal._doc, {total_calories: Math.round(meal.quantity * foodCalPerGm)})
                 foodLunchList.push(foodItem)
             }
             myData.lunch = {
@@ -747,7 +747,7 @@ class DailyDietController {
                 //calculate calories
                 let foodCalPerGm = (meal.food_id.calories_per_quantity || 0) / (meal.food_id.nutrients_per_quantity || 100)
                 foodDinnerCal += meal.quantity * foodCalPerGm
-                const foodItem = Object.assign(meal._doc, {total_calories: Math.floor(meal.quantity * foodCalPerGm)})
+                const foodItem = Object.assign(meal._doc, {total_calories: Math.round(meal.quantity * foodCalPerGm)})
                 foodDinnerList.push(foodItem)
             }
             myData.dinner = {

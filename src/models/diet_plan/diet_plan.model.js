@@ -19,18 +19,35 @@ const dietPlanSchema = mongoose.Schema({
     health_issues: [{
         type: mongoose.Schema.Types.ObjectId, ref: "HealthIssue",
     }],
+    variant: {
+        type: String,
+        enum: ['Weight Loss', 'Weight Gain', 'Maintain Weight'],
+        required: true,
+        default: 'Maintain Weight'
+    },
+    dietary_option: {
+        type: String,
+        enum: ['Veg', 'Non-Veg', 'Vegan'],
+        required: true,
+        default: 'Veg'
+    },
     breakfast: [FoodQuantitySchema],
     lunch: [FoodQuantitySchema],
     dinner: [FoodQuantitySchema],
-    water: {
+    water_target: {
         type: Number,
         required: true,
-        default: 0
+        default: 10
     },
-    gt_bc: {
+    green_tea_target: {
         type: Number,
         required: true,
-        default: 0
+        default: 4
+    },
+    black_coffee_target: {
+        type: Number,
+        required: true,
+        default: 2
     },
 }, {timestamps: true});
 

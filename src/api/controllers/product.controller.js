@@ -57,6 +57,29 @@ class ProductController {
             return res.status(500).json(ApiResponse.error(error.message));
         }
     }
+    static async createManualProduct(req, res) {
+        const { title, description, price, images, brand } = req.body;
+
+        if (!title || !price) {
+            return res.status(400).json(ApiResponse.error("Title and Price are required"));
+        }
+
+        try {
+            const productData = {
+                title,
+                description,
+                price,
+                images: images || [],
+                brand,
+                is_manual: true
+            };
+
+            const newProduct = await Product.create(productData);
+            return res.status(201).json(ApiResponse.success("Product created successfully", newProduct));
+        } catch (error) {
+            return res.status(500).json(ApiResponse.error(error.message));
+        }
+    }
 }
 
 export default ProductController;

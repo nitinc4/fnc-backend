@@ -51,7 +51,7 @@ class DietPlanController {
 
         const {
             user_id, name, description, start_date, end_date, health_issues, breakfast, lunch,
-            dinner, water, gt_bc
+            dinner, water_target, green_tea_target, black_coffee_target, variant, dietary_option
         } = req.body
 
         if (!user_id)
@@ -86,11 +86,20 @@ class DietPlanController {
             if (!Array.isArray(dinner))
                 return res.status(400).send(ApiResponse.error('{ dinner } must be an array'))
 
-        if (water === null || water === undefined)
-            return res.status(400).send(ApiResponse.error('{ water } is required'))
+        if (water_target === null || water_target === undefined)
+            return res.status(400).send(ApiResponse.error('{ water_target } is required'))
             
-        if (gt_bc === null || gt_bc === undefined)
-            return res.status(400).send(ApiResponse.error('{ gt_bc } is required'))
+        if (green_tea_target === null || green_tea_target === undefined)
+            return res.status(400).send(ApiResponse.error('{ green_tea_target } is required'))
+
+        if (black_coffee_target === null || black_coffee_target === undefined)
+            return res.status(400).send(ApiResponse.error('{ black_coffee_target } is required'))
+
+        if (!variant)
+            return res.status(400).send(ApiResponse.error('{ variant } is required'))
+
+        if (!dietary_option)
+            return res.status(400).send(ApiResponse.error('{ dietary_option } is required'))
 
         if (!breakfast && !lunch && !dinner)
             return res.status(400).send(ApiResponse.error('At least one meal plan is required { breakfast, lunch, dinner }'))
@@ -196,8 +205,11 @@ class DietPlanController {
                     breakfast: breakfastList,
                     lunch: lunchList,
                     dinner: dinnerList,
-                    water: water,
-                    gt_bc: gt_bc
+                    water_target: water_target,
+                    green_tea_target: green_tea_target,
+                    black_coffee_target: black_coffee_target,
+                    variant: variant,
+                    dietary_option: dietary_option
                 }
             )
 
@@ -228,8 +240,11 @@ class DietPlanController {
             breakfast,
             lunch,
             dinner,
-            water,
-            gt_bc
+            water_target,
+            green_tea_target,
+            black_coffee_target,
+            variant,
+            dietary_option
         } = req.body
 
         if (!user_id)
@@ -260,11 +275,20 @@ class DietPlanController {
             if (end_date && end_date!=='null')
                 existingPLan.end_date = getDate_YYYY_MM_DD(end_date)
                 
-            if (water !== undefined && water !== null && water !== 'null')
-                existingPLan.water = water
+            if (water_target !== undefined && water_target !== null && water_target !== 'null')
+                existingPLan.water_target = water_target
                 
-            if (gt_bc !== undefined && gt_bc !== null && gt_bc !== 'null')
-                existingPLan.gt_bc = gt_bc
+            if (green_tea_target !== undefined && green_tea_target !== null && green_tea_target !== 'null')
+                existingPLan.green_tea_target = green_tea_target
+
+            if (black_coffee_target !== undefined && black_coffee_target !== null && black_coffee_target !== 'null')
+                existingPLan.black_coffee_target = black_coffee_target
+
+            if (variant && variant !== 'null')
+                existingPLan.variant = variant
+
+            if (dietary_option && dietary_option !== 'null')
+                existingPLan.dietary_option = dietary_option
 
             if (health_issues) {
                 if (!Array.isArray(health_issues))

@@ -23,7 +23,8 @@ class FileController {
                     contentType: file.contentType,
                     size: file.size,
                     createdAt: file.createdAt,
-                    user: file.user || null 
+                    user: file.user || null,
+                    description: file.description || ''
                 };
             });
 
@@ -36,7 +37,7 @@ class FileController {
 
     static async add(req, res) {
         try {
-            let { name, directory, userId } = req.body;
+            let { name, directory, userId, description } = req.body;
             
             // FIX: Robustly extract the user ID regardless of how the token is structured
             let finalUserId = null;
@@ -60,7 +61,8 @@ class FileController {
                 contentType: req.file.mimetype,
                 size: req.file.size,
                 directory: directory,
-                user: finalUserId // Now safely attached
+                user: finalUserId, // Now safely attached
+                description: description || ''
             });
 
             await newFile.save();

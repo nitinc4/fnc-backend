@@ -31,7 +31,7 @@ class DailyDietController {
 
             const {date} = req.query;
             const {user_id} = req.body;
-            const {water, gt_bc, breakfast,  lunch,  dinner} = req.body;
+            const {water, green_tea, black_coffee, breakfast, lunch, dinner} = req.body;
 
             const user = await User.findById(user_id);
 
@@ -58,7 +58,8 @@ class DailyDietController {
 
             // SAFE DEFAULTS: If not provided during creation (e.g. from adding food), default to 0
             let safeWater = (water !== undefined && water !== null && water !== 'null') ? water : 0;
-            let safeGtBc = (gt_bc !== undefined && gt_bc !== null && gt_bc !== 'null') ? gt_bc : 0;
+            let safeGreenTea = (green_tea !== undefined && green_tea !== null && green_tea !== 'null') ? green_tea : 0;
+            let safeBlackCoffee = (black_coffee !== undefined && black_coffee !== null && black_coffee !== 'null') ? black_coffee : 0;
 
             let breakfastList = []
             if (breakfast) {
@@ -118,7 +119,8 @@ class DailyDietController {
                 lunch: lunchList,
                 dinner: dinnerList,
                 water: safeWater,
-                gt_bc: safeGtBc,
+                green_tea: safeGreenTea,
+                black_coffee: safeBlackCoffee,
                 createdAt: targetDate
             });
 
@@ -173,7 +175,8 @@ class DailyDietController {
             const diet = await DailyDiet.create({
                 created_by: user,
                 water: water,
-                gt_bc: 0,
+                green_tea: 0,
+                black_coffee: 0,
                 breakfast: [],
                 lunch: [],
                 dinner: [],
@@ -188,16 +191,16 @@ class DailyDietController {
         }
     }
 
-    static async addGtBc(req, res) {
+    static async addGreenTea(req, res) {
         try {
             const {date} = req.query
             const {user_id} = req.body;
-            const {gt_bc} = req.body;
+            const {green_tea} = req.body;
 
             const targetDate = date ? new Date(date) : getTodayDate()
 
-            if (gt_bc === null || gt_bc === undefined || gt_bc === 'null')
-                return res.status(400).json(ApiResponse.error('{gt_bc} is required'))
+            if (green_tea === null || green_tea === undefined || green_tea === 'null')
+                return res.status(400).json(ApiResponse.error('{green_tea} is required'))
 
             if (!user_id)
                 return res.status(400).json(ApiResponse.error('{user_id} is required'))
@@ -222,7 +225,7 @@ class DailyDietController {
 
             if (checkExisting) {
                 req.params.id = checkExisting._id;
-                req.body.gt_bc = gt_bc;
+                req.body.green_tea = green_tea;
                 await DailyDietController.update(req, res)
                 return
             }
@@ -230,7 +233,8 @@ class DailyDietController {
             const diet = await DailyDiet.create({
                 created_by: user,
                 water: 0,
-                gt_bc: gt_bc,
+                green_tea: green_tea,
+                black_coffee: 0,
                 breakfast: [],
                 lunch: [],
                 dinner: [],
@@ -238,7 +242,65 @@ class DailyDietController {
 
             const createdDiet = await DailyDiet.findById(diet._id)
 
-            return res.status(200).json(ApiResponse.success('GT/BC added successfully', createdDiet))
+            return res.status(200).json(ApiResponse.success('Green Tea added successfully', createdDiet))
+
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message || 'Internal server error'))
+        }
+    }
+
+    static async addBlackCoffee(req, res) {
+        try {
+            const {date} = req.query
+            const {user_id} = req.body;
+            const {black_coffee} = req.body;
+
+            const targetDate = date ? new Date(date) : getTodayDate()
+
+            if (black_coffee === null || black_coffee === undefined || black_coffee === 'null')
+                return res.status(400).json(ApiResponse.error('{black_coffee} is required'))
+
+            if (!user_id)
+                return res.status(400).json(ApiResponse.error('{user_id} is required'))
+
+            if (!mongoose.Types.ObjectId.isValid(user_id)) {
+                return res.status(400).json(ApiResponse.error('Invalid user id'))
+            }
+
+            const user = await User.findById(user_id);
+
+            if (!user) {
+                return res.status(404).json(ApiResponse.error('User not found'))
+            }
+
+            const checkExisting = await DailyDiet.findOne({
+                created_by: user_id,
+                createdAt: {
+                    $gte: targetDate,
+                    $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
+                }
+            })
+
+            if (checkExisting) {
+                req.params.id = checkExisting._id;
+                req.body.black_coffee = black_coffee;
+                await DailyDietController.update(req, res)
+                return
+            }
+
+            const diet = await DailyDiet.create({
+                created_by: user,
+                water: 0,
+                green_tea: 0,
+                black_coffee: black_coffee,
+                breakfast: [],
+                lunch: [],
+                dinner: [],
+            });
+
+            const createdDiet = await DailyDiet.findById(diet._id)
+
+            return res.status(200).json(ApiResponse.success('Black Coffee added successfully', createdDiet))
 
         } catch (e) {
             return res.status(500).json(ApiResponse.error(e.message || 'Internal server error'))
@@ -248,7 +310,7 @@ class DailyDietController {
     static async update(req, res) {
         try {
             const {id} = req.params;
-            const {user_id, water, gt_bc, breakfast,  lunch,  dinner} = req.body;
+            const {user_id, water, green_tea, black_coffee, breakfast, lunch, dinner} = req.body;
 
             if (!user_id)
                 return res.status(400).json(ApiResponse.error('user is invalid'))
@@ -270,9 +332,12 @@ class DailyDietController {
                 diet.water = water
             }
             
-            if (gt_bc !== null && gt_bc !== undefined && gt_bc !== 'null') {
+            if (green_tea !== null && green_tea !== undefined && green_tea !== 'null') {
+                diet.green_tea = green_tea
+            }
 
-                diet.gt_bc = gt_bc
+            if (black_coffee !== null && black_coffee !== undefined && black_coffee !== 'null') {
+                diet.black_coffee = black_coffee
             }
 
 
@@ -428,8 +493,9 @@ class DailyDietController {
         let isDietPlanExist = false
         let dietPlanData
 
-        let plan_water = 0
-        let plan_gt_bc = 0
+        let plan_water = 10
+        let plan_green_tea = 4
+        let plan_black_coffee = 2
         let dietPlanBreakfastCal = 0
         let dietPlanBreakfastList = []
         let dietPlanLunchCal = 0
@@ -483,10 +549,15 @@ class DailyDietController {
                         }
                     }
                     
-                    if (dietPlan.gt_bc != null) {
+                    if (dietPlan.green_tea_target != null) {
+                        if (dietPlan.green_tea_target > plan_green_tea) {
+                            plan_green_tea = dietPlan.green_tea_target
+                        }
+                    }
 
-                        if (dietPlan.gt_bc > plan_gt_bc) {
-                            plan_gt_bc = dietPlan.gt_bc
+                    if (dietPlan.black_coffee_target != null) {
+                        if (dietPlan.black_coffee_target > plan_black_coffee) {
+                            plan_black_coffee = dietPlan.black_coffee_target
                         }
                     }
 
@@ -611,7 +682,8 @@ class DailyDietController {
 
         responseObj.is_diet_plan_exist = isDietPlanExist
         responseObj.plan_water = plan_water
-        responseObj.plan_gt_bc = plan_gt_bc
+        responseObj.plan_green_tea = plan_green_tea
+        responseObj.plan_black_coffee = plan_black_coffee
 
         responseObj.total_calories = 0
         responseObj.total_plan_calories = totalPlanCal
@@ -696,13 +768,15 @@ class DailyDietController {
 
         if (userDiet) {
             responseObj.my_water = userDiet.water || 0
-            responseObj.my_gt_bc = userDiet.gt_bc || 0
+            responseObj.my_green_tea = userDiet.green_tea || 0
+            responseObj.my_black_coffee = userDiet.black_coffee || 0
             responseObj.my_data = myData
             //  responseObj._id = userDiet._id
             responseObj.createdAt = userDiet.createdAt
         } else {
             responseObj.my_water = 0
-            responseObj.my_gt_bc = 0
+            responseObj.my_green_tea = 0
+            responseObj.my_black_coffee = 0
             responseObj.my_data = null
             responseObj.createdAt = null
 

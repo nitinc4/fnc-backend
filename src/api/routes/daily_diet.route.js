@@ -11,7 +11,8 @@ router.put("/", DailyDietController.update)
 
 router.post("/water", DailyDietController.addWater)
 
-router.post("/gt_bc", DailyDietController.addGtBc)
+router.post("/green-tea", DailyDietController.addGreenTea)
+router.post("/black-coffee", DailyDietController.addBlackCoffee)
 
 router.delete("/:id", DailyDietController.delete)
 

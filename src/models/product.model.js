@@ -12,11 +12,14 @@ const productSchema = mongoose.Schema({
     },
     images: [String], // Array of image URLs
     brand: String,
-    handle: String,
+    is_manual: {
+        type: Boolean,
+        default: false
+    },
     product_url: {
         type: String,
-        required: true,
-        unique: true
+        unique: true,
+        sparse: true
     }
 }, { timestamps: true });
 

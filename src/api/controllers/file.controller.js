@@ -12,10 +12,9 @@ const FileController = {
       let filePath = req.body.path; 
 
       if (req.file && req.file.buffer) {
-         // The path is now a logical reference rather than a physical one
          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-         const extension = path.extname(req.file.originalname);
-         filePath = `db-uploads/${uniqueSuffix}${extension}`;
+         const originalName = req.file.originalname.replace(/\s+/g, '_');
+         filePath = `db-uploads/${uniqueSuffix}-${originalName}`;
       }
 
       if (!filePath && !req.file) {
@@ -74,8 +73,12 @@ const FileController = {
     try {
       const { filename } = req.params;
       
-      // Filename in filename parameter corresponds to the end of the stored 'path' field
-      const file = await FileModel.findOne({ path: { $regex: filename } });
+      // Attempt to find by original name first, then by path regex
+      let file = await FileModel.findOne({ name: filename });
+      
+      if (!file) {
+        file = await FileModel.findOne({ path: { $regex: filename } });
+      }
 
       if (!file || !file.media) {
         return res.status(httpStatus.NOT_FOUND).json({

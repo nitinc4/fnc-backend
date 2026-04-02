@@ -1,5 +1,5 @@
-import httpStatus from 'http-status';
-import { File as FileModel } from '../../models/file/file.model';
+import httpStatus from '../../utils/http-status.js';
+import { File as FileModel } from '../../models/file/file.model.js';
 import path from 'path';
 import fs from 'fs';
 

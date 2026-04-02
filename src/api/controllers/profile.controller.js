@@ -31,8 +31,7 @@ async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user, user
     const isPaidPlan = user && user.plan && user.plan.toLowerCase() === 'paid';
     let finalPlanIds = [];
 
-    const variant = userProfileData.variant || 'Maintain Weight';
-    const preference = userProfileData.dietary_option || 'Veg';
+    const variant = userProfileData.variant?.toLowerCase() || 'maintain weight';
 
     // 1. Paid Users get specific plans
     if (isPaidPlan) {
@@ -44,36 +43,35 @@ async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user, user
 
         if (finalPlanIds.length === 0 && healthIssueIds && healthIssueIds.length > 0) {
             const cleanIssues = healthIssueIds.map(extractId);
-            // Try to find a match for health issue AND variant AND preference
+            // Match by health issue AND variant (Unified plans contain all Veg/Non-Veg/Vegan options)
             const matchingPlans = await DietPlan.find({ 
                 health_issues: { $in: cleanIssues },
-                variant: variant,
-                dietary_option: preference
+                variant: variant
             });
             
             if (matchingPlans.length > 0) {
                 finalPlanIds = matchingPlans.map(p => p._id);
             } else {
-                // Fallback: match by health issue only if specific variant/preference not found
+                // Fallback: match by health issue only
                 const issueOnlyPlans = await DietPlan.find({ health_issues: { $in: cleanIssues } });
                 finalPlanIds = issueOnlyPlans.map(p => p._id);
             }
         }
     }
 
-    // 2. Free Users (or fallback) - try to find a variant-matched "General" plan or specific plan if allowed
+    // 2. Free Users (or fallback) - try to find a variant-matched "General" plan
     if (finalPlanIds.length === 0) {
         const matchingPlan = await DietPlan.findOne({
             variant: variant,
-            dietary_option: preference,
             $or: [
-                { name: { $regex: /general/i } }
+                { name: { $regex: /general/i } },
+                { name: { $regex: /unified/i } }
             ]
         });
         if (matchingPlan) {
             finalPlanIds.push(matchingPlan._id);
         } else {
-            // Ultimate fallback: General plan
+            // Ultimate fallback: Any general plan
             const generalPlan = await DietPlan.findOne({name: { $regex: /general/i }});
             if (generalPlan) finalPlanIds.push(generalPlan._id);
         }

@@ -9,8 +9,9 @@ class DietPlanController {
             const {health_issues, variant, dietary_option} = req.query;
             let filter = {};
             if (health_issues) filter.health_issues = { $in: health_issues.split(',') };
-            if (variant) filter.variant = variant;
-            if (dietary_option) filter.dietary_option = dietary_option;
+            if (variant) filter.variant = variant.toLowerCase();
+            // Dietary option is now optional since plans are being unified
+            if (dietary_option && dietary_option !== 'all') filter.dietary_option = dietary_option;
 
             const dietPlans = await DietPlan.find(filter)
                 .populate('health_issues')

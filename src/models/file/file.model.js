@@ -1,20 +1,27 @@
 import mongoose from "mongoose";
 
 const fileSchema = new mongoose.Schema({
-    url: {
+    path: {
         type: String,
         required: true
     },
-    type: {
+    name: {
         type: String,
-        enum: ['image', 'pdf', 'other'],
-        default: 'other'
+        required: true
+    },
+    directory: {
+        type: String,
+        default: 'public'
+    },
+    contentType: {
+        type: String,
+        default: 'application/octet-stream'
     },
     description: {
         type: String,
         trim: true
     },
-    user_id: {
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }

@@ -1,17 +1,21 @@
 import express from "express";
 import FileController from "../controllers/file.controller.js";
+// multerResponseMiddleware handles the file storage part
 import multerResponseMiddleware from "../middlewares/file.middelware.js";
-// Make sure this path points to your actual auth middleware
 import { authenticateRequest } from "../middlewares/auth.middleware.js"; 
 
 const router = express.Router();
 
-router.get('/', FileController.get);
-router.get('/view/:filename', FileController.serve); 
+// List all files (with optional userId query param)
+router.get('/', FileController.list);
 
-// Added authentication middleware so req.user is attached to the upload
+// Securely view/download a file by filename
+router.get('/view/:filename', FileController.view); 
+
+// Upload a new file (accepts both physical upload and manual path records)
 router.post('/', authenticateRequest, multerResponseMiddleware, FileController.add);
 
-router.delete('/', FileController.delete);
+// Delete a file (supports ID in params or pathname in body)
+router.delete('/:id?', authenticateRequest, FileController.delete);
 
 export default router;

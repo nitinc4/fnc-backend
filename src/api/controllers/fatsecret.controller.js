@@ -5,24 +5,54 @@ import { Meal } from "../../models/meal/meal.model.js";
 
 const HEALTH_CONSTRAINTS = {
     'Diabetes': {
-        maxSugar: 5, // g per serving
-        minFiber: 3,  // g per serving
-        maxCarbs: 15, // g per serving
-        keywords: ['diabetic', 'low sugar', 'high fiber', 'whole grain']
+        maxSugar: 5,
+        minFiber: 3,
+        maxCarbs: 20,
+        keywords: ['diabetic', 'low sugar', 'high fiber', 'whole grain', 'lentils', 'quinoa']
     },
     'Hypertension': {
-        maxSodium: 140, // mg per serving (low sodium threshold)
-        keywords: ['low sodium', 'unsalted', 'heart healthy']
+        maxSodium: 140,
+        keywords: ['low sodium', 'unsalted', 'heart healthy', 'banana', 'beets']
     },
-    'High Cholesterol': {
-        maxSaturatedFat: 1.5, // g per serving
-        maxCholesterol: 20,   // mg per serving
-        keywords: ['low cholesterol', 'heart healthy', 'low fat']
+    'Blood Pressure': {
+        maxSodium: 140,
+        keywords: ['low sodium', 'unsalted', 'heart healthy', 'potassium rich']
     },
     'Obesity': {
         maxCalories: 300, 
         minProtein: 10,
         keywords: ['low calorie', 'high protein', 'weight loss']
+    },
+    'Weight Loss': {
+        maxCalories: 300, 
+        minProtein: 10,
+        keywords: ['low calorie', 'weight loss', 'leafy greens', 'cucumber']
+    },
+    'Pcod': {
+        maxSugar: 5,
+        minFiber: 4,
+        keywords: ['low gi', 'pcos friendly', 'cinnamon', 'pumpkin seeds', 'berries']
+    },
+    'Pcos': {
+        maxSugar: 5,
+        minFiber: 4,
+        keywords: ['low gi', 'pcos friendly', 'cinnamon', 'pumpkin seeds', 'berries']
+    },
+    'Thyroid': {
+        keywords: ['iodine rich', 'selenium rich', 'brazil nuts', 'seaweed', 'eggs']
+    },
+    'Cancer Care': {
+        keywords: ['antioxidant rich', 'berries', 'broccoli', 'turmeric', 'walnuts']
+    },
+    'Kidney Stone Reversal': {
+        maxSodium: 150,
+        keywords: ['low oxalate', 'lemon', 'watermelon', 'hydration']
+    },
+    'Gastric Reversal': {
+        keywords: ['bland diet', 'probiotic', 'ginger', 'yogurt', 'bananas']
+    },
+    'Derma Care': {
+        keywords: ['skin health', 'omega 3', 'vitamin e', 'avocado', 'walnuts']
     }
 };
 

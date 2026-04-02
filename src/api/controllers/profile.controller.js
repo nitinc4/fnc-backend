@@ -27,9 +27,12 @@ const extractId = (val) => {
 };
 // -------------------------------
 
-async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user) {
+async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user, userProfileData = {}) {
     const isPaidPlan = user && user.plan && user.plan.toLowerCase() === 'paid';
     let finalPlanIds = [];
+
+    const variant = userProfileData.variant || 'Maintain Weight';
+    const preference = userProfileData.dietary_option || 'Veg';
 
     // 1. Paid Users get specific plans
     if (isPaidPlan) {
@@ -41,15 +44,39 @@ async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user) {
 
         if (finalPlanIds.length === 0 && healthIssueIds && healthIssueIds.length > 0) {
             const cleanIssues = healthIssueIds.map(extractId);
-            const matchingPlans = await DietPlan.find({ health_issues: { $in: cleanIssues } });
-            finalPlanIds = matchingPlans.map(p => p._id);
+            // Try to find a match for health issue AND variant AND preference
+            const matchingPlans = await DietPlan.find({ 
+                health_issues: { $in: cleanIssues },
+                variant: variant,
+                dietary_option: preference
+            });
+            
+            if (matchingPlans.length > 0) {
+                finalPlanIds = matchingPlans.map(p => p._id);
+            } else {
+                // Fallback: match by health issue only if specific variant/preference not found
+                const issueOnlyPlans = await DietPlan.find({ health_issues: { $in: cleanIssues } });
+                finalPlanIds = issueOnlyPlans.map(p => p._id);
+            }
         }
     }
 
-    // 2. Free Users (or Paid fallback) get General
+    // 2. Free Users (or fallback) - try to find a variant-matched "General" plan or specific plan if allowed
     if (finalPlanIds.length === 0) {
-        const generalPlan = await DietPlan.findOne({name: { $regex: /general/i }});
-        if (generalPlan) finalPlanIds.push(generalPlan._id);
+        const matchingPlan = await DietPlan.findOne({
+            variant: variant,
+            dietary_option: preference,
+            $or: [
+                { name: { $regex: /general/i } }
+            ]
+        });
+        if (matchingPlan) {
+            finalPlanIds.push(matchingPlan._id);
+        } else {
+            // Ultimate fallback: General plan
+            const generalPlan = await DietPlan.findOne({name: { $regex: /general/i }});
+            if (generalPlan) finalPlanIds.push(generalPlan._id);
+        }
     }
 
     return finalPlanIds;
@@ -134,7 +161,10 @@ class ProfileController {
                 if (healthIssue) healthIssuesList.push(healthIssue._id)
             }
 
-            const assignedDietPlanIds = await resolveDietPlans(healthIssuesList, diet_plans, user);
+            const assignedDietPlanIds = await resolveDietPlans(healthIssuesList, diet_plans, user, {
+                variant: extractStr(req.body.variant),
+                dietary_option: extractStr(req.body.dietary_option)
+            });
 
             const createdUser = await UserProfile.create({
                 user_id: user._id, 
@@ -229,7 +259,10 @@ class ProfileController {
             }
 
             const requestedPlans = diet_plans && Array.isArray(diet_plans) ? diet_plans : [];
-            existingUserProfile.diet_plans = await resolveDietPlans(existingUserProfile.health_issues, requestedPlans, user);
+            existingUserProfile.diet_plans = await resolveDietPlans(existingUserProfile.health_issues, requestedPlans, user, {
+                variant: extractStr(variant) || existingUserProfile.variant,
+                dietary_option: extractStr(dietary_option) || existingUserProfile.dietary_option
+            });
 
             await existingUserProfile.save()
 

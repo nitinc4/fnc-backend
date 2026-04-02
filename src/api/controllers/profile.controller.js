@@ -220,6 +220,7 @@ class ProfileController {
         const {
             user_id, name, weight, target_weight, height, gender, age, goal, 
             activity_level, city, state, country, health_issues, diet_plans,
+            variant, dietary_option
         } = req.body
 
         if (!user_id) return res.status(400).json(ApiResponse.error('User is required'))
@@ -258,10 +259,16 @@ class ProfileController {
                 existingUserProfile.health_issues = healthIssuesList
             }
 
+            if (variant) existingUserProfile.variant = extractStr(variant);
+            if (dietary_option) existingUserProfile.dietary_option = extractStr(dietary_option);
+            if (req.body.has_social_discount !== undefined) {
+                existingUserProfile.has_social_discount = req.body.has_social_discount;
+            }
+
             const requestedPlans = diet_plans && Array.isArray(diet_plans) ? diet_plans : [];
             existingUserProfile.diet_plans = await resolveDietPlans(existingUserProfile.health_issues, requestedPlans, user, {
-                variant: extractStr(variant) || existingUserProfile.variant,
-                dietary_option: extractStr(dietary_option) || existingUserProfile.dietary_option
+                variant: existingUserProfile.variant,
+                dietary_option: existingUserProfile.dietary_option
             });
 
             await existingUserProfile.save()

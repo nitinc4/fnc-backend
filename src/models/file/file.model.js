@@ -1,16 +1,26 @@
-import mongoose from 'mongoose';
+// src/models/file/file.model.js
+const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    data: { type: Buffer, required: true },
-    contentType: { type: String, required: true },
-    size: { type: Number, required: true },
-    directory: { type: String, default: 'public' },
-    // --- NEW: Link the file to the User who uploaded it ---
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    description: { type: String, default: '' }
-}, { timestamps: true });
+    url: {
+        type: String,
+        required: true
+    },
+    type: {
+        type: String,
+        enum: ['image', 'pdf', 'other'],
+        default: 'other'
+    },
+    description: {
+        type: String,
+        trim: true
+    },
+    user_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }
+}, {
+    timestamps: true
+});
 
-const FileModel = mongoose.model('File', fileSchema);
-
-export default FileModel;
+module.exports = mongoose.model('File', fileSchema);

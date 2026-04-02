@@ -1,85 +1,56 @@
-import ApiResponse from "../../utils/api_response.js";
-import { Product } from "../../models/product.model.js";
-import { fetchShopifyProductData } from "../../utils/product_fetcher.js";
-import mongoose from "mongoose";
+// src/api/controllers/product.controller.js
+const Product = require('../../models/product.model');
+const ApiResponse = require('../utils/ApiResponse');
 
 class ProductController {
-    static async addProductByUrl(req, res) {
-        const { url } = req.body;
-
-        if (!url) {
-            return res.status(400).json(ApiResponse.error("Product URL is required"));
-        }
-
+    static async createProduct(req, res) {
         try {
-            // Check if product already exists to avoid duplicates
-            const existing = await Product.findOne({ product_url: url });
-            if (existing) {
-                return res.status(400).json(ApiResponse.error("Product already exists in database"));
-            }
-
-            // Fetch data using the utility
-            const productData = await fetchShopifyProductData(url);
-
-            // Save to DB
-            const newProduct = await Product.create(productData);
-
-            return res.status(201).json(ApiResponse.success("Product added successfully", newProduct));
-        } catch (error) {
-            return res.status(500).json(ApiResponse.error(error.message));
+            const product = new Product(req.body);
+            await product.save();
+            return res.status(201).json(ApiResponse.success(product, 'Product created successfully'));
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message));
         }
     }
 
-    static async getAllProducts(req, res) {
+    static async getProducts(req, res) {
         try {
-            const products = await Product.find().sort({ createdAt: -1 });
-            return res.status(200).json(ApiResponse.success("Products retrieved", products));
-        } catch (error) {
-            return res.status(500).json(ApiResponse.error(error.message));
+            const products = await Product.find({ isActive: true });
+            return res.status(200).json(ApiResponse.success(products));
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message));
+        }
+    }
+
+    static async getProductById(req, res) {
+        try {
+            const product = await Product.findById(req.params.id);
+            if (!product) return res.status(404).json(ApiResponse.error('Product not found'));
+            return res.status(200).json(ApiResponse.success(product));
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message));
+        }
+    }
+
+    static async updateProduct(req, res) {
+        try {
+            const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+            if (!product) return res.status(404).json(ApiResponse.error('Product not found'));
+            return res.status(200).json(ApiResponse.success(product, 'Product updated successfully'));
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message));
         }
     }
 
     static async deleteProduct(req, res) {
         try {
-            const { id } = req.params;
-
-            if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-                return res.status(400).json(ApiResponse.error("Invalid product id"));
-            }
-
-            const deletedProduct = await Product.findByIdAndDelete(id);
-            if (!deletedProduct) {
-                return res.status(404).json(ApiResponse.error("Product not found"));
-            }
-
-            return res.status(200).json(ApiResponse.success("Product deleted successfully", deletedProduct));
-        } catch (error) {
-            return res.status(500).json(ApiResponse.error(error.message));
-        }
-    }
-    static async createManualProduct(req, res) {
-        const { title, description, price, images, brand } = req.body;
-
-        if (!title || !price) {
-            return res.status(400).json(ApiResponse.error("Title and Price are required"));
-        }
-
-        try {
-            const productData = {
-                title,
-                description,
-                price,
-                images: images || [],
-                brand,
-                is_manual: true
-            };
-
-            const newProduct = await Product.create(productData);
-            return res.status(201).json(ApiResponse.success("Product created successfully", newProduct));
-        } catch (error) {
-            return res.status(500).json(ApiResponse.error(error.message));
+            const product = await Product.findByIdAndUpdate(req.params.id, { isActive: false });
+            if (!product) return res.status(404).json(ApiResponse.error('Product not found'));
+            return res.status(200).json(ApiResponse.success(null, 'Product deleted successfully'));
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message));
         }
     }
 }
 
-export default ProductController;
+module.exports = ProductController;

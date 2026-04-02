@@ -1,26 +1,39 @@
-import mongoose from "mongoose";
+// src/models/product.model.js
+const mongoose = require('mongoose');
 
-const productSchema = mongoose.Schema({
+const productSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
+        trim: true
     },
-    description: String, // Stores HTML string as per Shopify data
+    description: {
+        type: String,
+        required: true
+    },
     price: {
         type: Number,
         required: true,
+        min: 0
     },
-    images: [String], // Array of image URLs
-    brand: String,
-    is_manual: {
-        type: Boolean,
-        default: false
+    images: {
+        type: [String],
+        default: []
     },
-    product_url: {
+    category: {
         type: String,
-        unique: true,
-        sparse: true
+        default: 'General'
+    },
+    stock: {
+        type: Number,
+        default: 0
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     }
-}, { timestamps: true });
+}, {
+    timestamps: true
+});
 
-export const Product = mongoose.model("Product", productSchema);
+module.exports = mongoose.model('Product', productSchema);

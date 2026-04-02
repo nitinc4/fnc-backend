@@ -37,6 +37,20 @@ const userProfileSchema = mongoose.Schema({
             ref: "HealthIssue",
         }
     ],
+    variant: {
+        type: String,
+        enum: ["weight loss", "weight gain", "maintain weight"],
+        default: "weight loss"
+    },
+    dietary_option: {
+        type: String,
+        enum: ["veg", "non veg", "vegan"],
+        default: "veg"
+    },
+    has_social_discount: {
+        type: Boolean,
+        default: false
+    }
 }, { timestamps: true }
 );
 

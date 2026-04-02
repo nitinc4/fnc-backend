@@ -1,19 +1,24 @@
 import httpStatus from '../../utils/http-status.js';
 import { File as FileModel } from '../../models/file/file.model.js';
 import path from 'path';
-import fs from 'fs';
 
+/**
+ * File Controller with MongoDB Binary Storage Support (Persistent on Render)
+ */
 const FileController = {
   add: async (req, res, next) => {
     try {
       const { name, directory, description, userId } = req.body;
-      let filePath = req.body.path; // For manual URL entry
+      let filePath = req.body.path; 
 
-      if (req.file) {
-        filePath = `public/uploads/${req.file.filename}`;
+      if (req.file && req.file.buffer) {
+         // The path is now a logical reference rather than a physical one
+         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+         const extension = path.extname(req.file.originalname);
+         filePath = `db-uploads/${uniqueSuffix}${extension}`;
       }
 
-      if (!filePath) {
+      if (!filePath && !req.file) {
         return res.status(httpStatus.BAD_REQUEST).json({
           success: false,
           message: 'No file path or file uploaded',
@@ -27,6 +32,7 @@ const FileController = {
         contentType: req.file ? req.file.mimetype : 'application/octet-stream',
         description: description || '',
         user: userId || (req.user ? req.user._id : null),
+        media: req.file ? req.file.buffer : null, // The actual binary content
       };
 
       const fileRecord = new FileModel(fileData);
@@ -45,7 +51,12 @@ const FileController = {
     try {
       const { userId } = req.query;
       const query = userId ? { user: userId } : {};
-      const files = await FileModel.find(query).populate('user', 'name email').sort({ createdAt: -1 });
+      
+      // Exclude media from the listing for performance (only needs metadata)
+      const files = await FileModel.find(query)
+        .select('-media') 
+        .populate('user', 'name email')
+        .sort({ createdAt: -1 });
       
       return res.status(httpStatus.OK).json({
         success: true,
@@ -56,19 +67,26 @@ const FileController = {
     }
   },
 
+  /**
+   * Serves the media from MongoDB Buffer instead of the filesystem.
+   */
   view: async (req, res, next) => {
     try {
       const { filename } = req.params;
-      const filePath = path.join(process.cwd(), 'public/uploads', filename);
+      
+      // Filename in filename parameter corresponds to the end of the stored 'path' field
+      const file = await FileModel.findOne({ path: { $regex: filename } });
 
-      if (!fs.existsSync(filePath)) {
+      if (!file || !file.media) {
         return res.status(httpStatus.NOT_FOUND).json({
           success: false,
-          message: 'File not found',
+          message: 'File or Media not found in Database',
         });
       }
 
-      return res.sendFile(filePath);
+      // Stream binary from MongoDB with correct headers
+      res.set('Content-Type', file.contentType || 'application/octet-stream');
+      return res.send(file.media);
     } catch (error) {
       next(error);
     }
@@ -76,8 +94,8 @@ const FileController = {
 
   delete: async (req, res, next) => {
     try {
-      const { id } = req.params; // Admin uses ID
-      const { pathname } = req.body; // Flutter uses pathname
+      const { id } = req.params;
+      const { pathname } = req.body;
 
       let file;
       if (id) {
@@ -93,19 +111,11 @@ const FileController = {
         });
       }
 
-      // Delete physical file if it exists in public/uploads
-      if (file.path.startsWith('public/uploads/')) {
-        const physicalPath = path.join(process.cwd(), file.path);
-        if (fs.existsSync(physicalPath)) {
-          fs.unlinkSync(physicalPath);
-        }
-      }
-
       await FileModel.findByIdAndDelete(file._id);
 
       return res.status(httpStatus.OK).json({
         success: true,
-        message: 'File deleted successfully',
+        message: 'File deleted from database successfully',
       });
     } catch (error) {
       next(error);

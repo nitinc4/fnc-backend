@@ -21,6 +21,10 @@ const fileSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    // Binary Media Storage
+    media: {
+        type: Buffer,
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

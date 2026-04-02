@@ -1,11 +1,14 @@
-// src/models/product.model.js
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
         trim: true
+    },
+    brand: {
+        type: String,
+        default: 'FNC'
     },
     description: {
         type: String,
@@ -36,4 +39,4 @@ const productSchema = new mongoose.Schema({
     timestamps: true
 });
 
-module.exports = mongoose.model('Product', productSchema);
+export const Product = mongoose.model("Product", productSchema);

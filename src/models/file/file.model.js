@@ -1,5 +1,4 @@
-// src/models/file/file.model.js
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const fileSchema = new mongoose.Schema({
     url: {
@@ -23,4 +22,4 @@ const fileSchema = new mongoose.Schema({
     timestamps: true
 });
 
-module.exports = mongoose.model('File', fileSchema);
+export const File = mongoose.model("File", fileSchema);

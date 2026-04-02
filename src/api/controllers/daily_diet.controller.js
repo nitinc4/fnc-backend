@@ -802,9 +802,19 @@ class DailyDietController {
             // 3. Check if we already have this FatSecret food cached
             let food = await Food.findOne({ externalId: foodId });
             
-            // SELF-HEALING: If food exists but macro data is incomplete (usually only fiber was matched)
-            if (food && food.nutrients && food.nutrients.length >= 4) {
-                return food;
+            // SELF-HEALING: If food exists but macro data is placeholder (exactly 15/20/5)
+            // or if nutrients_per_quantity is suspiciously 1
+            if (food && food.nutrients && food.nutrients.length >= 3) {
+                const isPlaceholder = food.nutrients.some(n => 
+                    (n.nutrient_id?.name === 'protein' && n.quantity === 15) ||
+                    (n.nutrient_id?.name === 'carbohydrate' && n.quantity === 20) ||
+                    (n.nutrient_id?.name === 'fat' && n.quantity === 5)
+                );
+                
+                if (!isPlaceholder && food.nutrients_per_quantity > 1) {
+                    return food;
+                }
+                console.log(`[DEBUG] Placeholder macros detected for ${food.name}, forcing re-fetch.`);
             }
 
             // 4. Provision or Re-provision details from FatSecret
@@ -814,7 +824,17 @@ class DailyDietController {
 
             // BETTER SERVING SELECTION: Prefer a serving with a non-zero metric_serving_amount (g/ml)
             const servingsList = Array.isArray(fsFood.servings.serving) ? fsFood.servings.serving : [fsFood.servings.serving];
-            const servingsData = servingsList.find(s => parseFloat(s.metric_serving_amount) > 1) || servingsList[0];
+            
+            // Look for a serving that has a real weight (metric_serving_amount > 1)
+            let servingsData = servingsList.find(s => parseFloat(s.metric_serving_amount) > 1);
+            
+            // If none found, fallback to the first one but try to detect if it's a "1 unit" serving and default to 100g if it looks suspicious
+            if (!servingsData) {
+                servingsData = servingsList[0];
+                if (parseFloat(servingsData.metric_serving_amount) <= 1) {
+                    servingsData.metric_serving_amount = 100; // Force 100g default for "1 serving" items that lack weight
+                }
+            }
             
             console.log(`[DEBUG] Selected serving: ${servingsData.serving_description}, metric_amt: ${servingsData.metric_serving_amount}`);
 

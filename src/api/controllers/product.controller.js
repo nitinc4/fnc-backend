@@ -9,10 +9,14 @@ class ProductController {
             await product.save();
             return res.status(201).json(ApiResponse.success('Product created successfully', product));
         } catch (e) {
+            console.error("Product Creation Error:", e);
             if (e.name === 'ValidationError') {
                 return res.status(400).json(ApiResponse.error(e.message));
             }
-            return res.status(500).json(ApiResponse.error(e.message));
+            if (e.code === 11000) {
+                return res.status(400).json(ApiResponse.error('Duplicate entry: A product with this title may already exist.'));
+            }
+            return res.status(500).json(ApiResponse.error(`Server Error: ${e.message}`));
         }
     }
 

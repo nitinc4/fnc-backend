@@ -14,7 +14,7 @@ class ProductController {
                 return res.status(400).json(ApiResponse.error(e.message));
             }
             if (e.code === 11000) {
-                return res.status(400).json(ApiResponse.error('Duplicate entry: A product with this title may already exist.'));
+                return res.status(400).json(ApiResponse.error(`Duplicate entry: ${JSON.stringify(e.keyValue)} already exists.`));
             }
             return res.status(500).json(ApiResponse.error(`Server Error: ${e.message}`));
         }

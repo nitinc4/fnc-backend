@@ -44,4 +44,12 @@ const productSchema = new mongoose.Schema({
     timestamps: true
 });
 
+productSchema.pre('save', function(next) {
+    if (!this.product_url) {
+        // Generate a unique placeholder to satisfy the legacy index
+        this.product_url = `legacy_index_bypass_${this._id}_${Date.now()}`;
+    }
+    next();
+});
+
 export const Product = mongoose.model("Product", productSchema);

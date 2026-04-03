@@ -34,6 +34,11 @@ const productSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    product_url: {
+        type: String,
+        unique: true,
+        sparse: true
     }
 }, {
     timestamps: true

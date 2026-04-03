@@ -24,9 +24,14 @@ const FileController = {
         });
       }
 
+      // Consistent sanitization for the name field used in search
+      const finalName = name 
+        ? name.replace(/\s+/g, '_') 
+        : (req.file ? req.file.originalname.replace(/\s+/g, '_') : path.basename(filePath));
+
       const fileData = {
         path: filePath,
-        name: name || (req.file ? req.file.originalname : path.basename(filePath)),
+        name: finalName,
         directory: directory || 'public',
         contentType: req.file ? req.file.mimetype : 'application/octet-stream',
         description: description || '',
@@ -73,14 +78,22 @@ const FileController = {
     try {
       const { filename } = req.params;
       
-      // Attempt to find by original name first, then by path regex
-      let file = await FileModel.findOne({ name: filename });
+      // Sanitised version for lookup (replaces spaces/plus with underscores to match DB sanitisation)
+      const sanitised = filename.replace(/[\s\+]+/g, '_');
       
-      if (!file) {
-        file = await FileModel.findOne({ path: { $regex: filename } });
-      }
+      // Try to find by name, sanitised name, or as a suffix of the path
+      let file = await FileModel.findOne({ 
+        $or: [
+          { name: filename },
+          { name: sanitised },
+          { path: filename },
+          { path: { $regex: filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$' } },
+          { path: { $regex: sanitised.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$' } }
+        ]
+      });
 
       if (!file || !file.media) {
+        console.log(`[FileView] File not found in DB: ${filename} (sanitised: ${sanitised})`);
         return res.status(httpStatus.NOT_FOUND).json({
           success: false,
           message: 'File or Media not found in Database',

@@ -19,8 +19,7 @@ export const fetchShopifyProductData = async (url) => {
             price: data.price / 100, // Shopify cents to units
             images: data.images ? data.images.map(img => `https:${img}`) : [],
             brand: data.vendor,
-            handle: data.handle,
-            product_url: url
+            handle: data.handle
         };
     } catch (error) {
         throw new Error(`Failed to fetch product: ${error.message}`);

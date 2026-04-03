@@ -9,6 +9,9 @@ class ProductController {
             await product.save();
             return res.status(201).json(ApiResponse.success('Product created successfully', product));
         } catch (e) {
+            if (e.name === 'ValidationError') {
+                return res.status(400).json(ApiResponse.error(e.message));
+            }
             return res.status(500).json(ApiResponse.error(e.message));
         }
     }

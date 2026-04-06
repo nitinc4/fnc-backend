@@ -64,6 +64,18 @@ class ProductReviewController {
             return res.status(500).json(ApiResponse.error(e.message || 'Error occurred while deleting review'));
         }
     }
+
+    static async getAll(req, res) {
+        try {
+            const reviews = await ProductReview.find()
+                .populate('product_id', 'title')
+                .populate('user_id', 'name email')
+                .sort({ createdAt: -1 });
+            return res.status(200).json(ApiResponse.success('All reviews retrieved successfully', reviews));
+        } catch (e) {
+            return res.status(500).json(ApiResponse.error(e.message || 'Error occurred while fetching all reviews'));
+        }
+    }
 }
 
 export default ProductReviewController;

@@ -14,6 +14,9 @@ router.use(authenticateRequest);
 // Create a review
 router.post("/", ProductReviewController.create);
 
+// Get all reviews - Admin only
+router.get("/", isAdmin, ProductReviewController.getAll);
+
 // Delete review - Admin only
 router.delete("/:reviewId", isAdmin, ProductReviewController.delete);
 

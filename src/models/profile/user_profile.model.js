@@ -39,8 +39,8 @@ const userProfileSchema = mongoose.Schema({
     ],
     variant: {
         type: String,
-        enum: ["weight loss", "weight gain", "maintain weight"],
-        default: "weight loss"
+        enum: ["Weight Loss", "Weight Gain", "Weight Maintenance"],
+        default: "Weight Maintenance"
     },
     dietary_option: {
         type: String,

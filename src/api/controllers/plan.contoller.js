@@ -10,17 +10,19 @@ class PlanController {
             const plans = await Plan.find().select("-__v").populate({
                 path: 'diet_plan',
                 select: '-__v',
-                strictPopulate: false,
-                populate: {
-                    path: 'breakfast lunch dinner created_by',
-                    select: '-__v',
-                    populate: {
-                        path: 'food_id',
-                        select: '-__v',
-                    strictPopulate: false
-                    },
-                    strictPopulate: false
-                }
+                options: { strictPopulate: false },
+                populate: [
+                    { path: 'created_by', select: 'name email _id image_url' },
+                    { path: 'breakfast.veg.food_id' },
+                    { path: 'breakfast.non_veg.food_id' },
+                    { path: 'breakfast.vegan.food_id' },
+                    { path: 'lunch.veg.food_id' },
+                    { path: 'lunch.non_veg.food_id' },
+                    { path: 'lunch.vegan.food_id' },
+                    { path: 'dinner.veg.food_id' },
+                    { path: 'dinner.non_veg.food_id' },
+                    { path: 'dinner.vegan.food_id' }
+                ]
             })
             return res.status(200).json(ApiResponse.success('Plans retrieved successfully', plans))
         } catch (error) {
@@ -86,17 +88,19 @@ class PlanController {
             const plan = await Plan.findById(id).select("-__v").populate({
                 path: 'diet_plan',
                 select: '-__v',
-                strictPopulate: false,
-                populate: {
-                    path: 'breakfast lunch dinner created_by',
-                    select: '-__v',
-                    populate: {
-                        path: 'food_id',
-                        select: '-__v',
-                        strictPopulate: false
-                    },
-                    strictPopulate: false
-                }
+                options: { strictPopulate: false },
+                populate: [
+                    { path: 'created_by', select: 'name email _id image_url' },
+                    { path: 'breakfast.veg.food_id' },
+                    { path: 'breakfast.non_veg.food_id' },
+                    { path: 'breakfast.vegan.food_id' },
+                    { path: 'lunch.veg.food_id' },
+                    { path: 'lunch.non_veg.food_id' },
+                    { path: 'lunch.vegan.food_id' },
+                    { path: 'dinner.veg.food_id' },
+                    { path: 'dinner.non_veg.food_id' },
+                    { path: 'dinner.vegan.food_id' }
+                ]
             })
             if (!plan)
                 return res.status(400).json(ApiResponse.error('Plan not found'))
@@ -149,17 +153,19 @@ class PlanController {
             const updatedPlan = await Plan.findById(id).select("-__v").populate({
                 path: 'diet_plan',
                 select: '-__v',
-                strictPopulate: false,
-                populate: {
-                    path: 'breakfast lunch dinner created_by',
-                    select: '-__v',
-                    populate: {
-                        path: 'food_id',
-                        select: '-__v',
-                        strictPopulate: false
-                    },
-                    strictPopulate: false
-                }
+                options: { strictPopulate: false },
+                populate: [
+                    { path: 'created_by', select: 'name email _id image_url' },
+                    { path: 'breakfast.veg.food_id' },
+                    { path: 'breakfast.non_veg.food_id' },
+                    { path: 'breakfast.vegan.food_id' },
+                    { path: 'lunch.veg.food_id' },
+                    { path: 'lunch.non_veg.food_id' },
+                    { path: 'lunch.vegan.food_id' },
+                    { path: 'dinner.veg.food_id' },
+                    { path: 'dinner.non_veg.food_id' },
+                    { path: 'dinner.vegan.food_id' }
+                ]
             })
 
             if (!updatedPlan)

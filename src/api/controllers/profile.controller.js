@@ -118,17 +118,15 @@ class ProfileController {
     static async getProfile(req, res) {
         const {user_id} = req.body;
         try {
-            // getProfile retains .populate() as the UI usually expects rich data on view
+            // Combined all populates for diet_plans into a single call to avoid strictPopulate errors
             let existingUserProfile = await UserProfile.findOne({user_id}).select('-__v')
                 .populate('health_issues', '-__v')
                 .populate({
                     path: 'diet_plans',
                     select: '-__v',
-                    populate: { path: 'created_by', select: 'name email _id image_url' }
-                }).populate({
-                    path: 'diet_plans',
-                    select: '-__v',
+                    options: { strictPopulate: false }, // Necessary for nested population of food items
                     populate: [
+                        { path: 'created_by', select: 'name email _id image_url' },
                         { path: 'breakfast.veg.food_id' },
                         { path: 'breakfast.non_veg.food_id' },
                         { path: 'breakfast.vegan.food_id' },
@@ -139,7 +137,7 @@ class ProfileController {
                         { path: 'dinner.non_veg.food_id' },
                         { path: 'dinner.vegan.food_id' }
                     ]
-                }).lean(); 
+                }).lean();
 
             if (!existingUserProfile) {
                 return res.status(400).json(ApiResponse.error('Profile does not exist,try creating it'))

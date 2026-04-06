@@ -469,14 +469,11 @@ class DailyDietController {
                 createdAt: {
                     $gte: selectedDate,
                     $lt: endDate,
-
                 },
-            }).populate(
-                {
-
-                    path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
-                    populate: 'meals nutrients.nutrient_id'
-                });
+            }).populate({
+                path: 'breakfast.food_id lunch.food_id dinner.food_id',
+                options: { strictPopulate: false }
+            });
         } else {
             userDiet = await DailyDiet.findOne({
                 created_by: user_id,
@@ -484,22 +481,28 @@ class DailyDietController {
                     $gte: getTodayDate(),
                     $lt: new Date(getTodayDate().getTime() + 24 * 60 * 60 * 1000)
                 }
-            }).populate(
-                {
-                    path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
-                    populate: 'meals nutrients.nutrient_id'
-                });
-
+            }).populate({
+                path: 'breakfast.food_id lunch.food_id dinner.food_id',
+                options: { strictPopulate: false }
+            });
         }
 
 
         //get diet plan data
         const dietPlans = await UserProfile.findOne({user_id: user_id}).populate({
             path: 'diet_plans',
-            populate: {
-                path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
-                populate: 'meals nutrients.nutrient_id'
-            }
+            options: { strictPopulate: false },
+            populate: [
+                { path: 'breakfast.veg.food_id' },
+                { path: 'breakfast.non_veg.food_id' },
+                { path: 'breakfast.vegan.food_id' },
+                { path: 'lunch.veg.food_id' },
+                { path: 'lunch.non_veg.food_id' },
+                { path: 'lunch.vegan.food_id' },
+                { path: 'dinner.veg.food_id' },
+                { path: 'dinner.non_veg.food_id' },
+                { path: 'dinner.vegan.food_id' }
+            ]
         })
 
         let isDietPlanExist = false

@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
-const mealPlanSchema = [{
+const mealItemSchema = new mongoose.Schema({
     food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
     quantity: { type: Number, default: 1 }
-}];
+}, { _id: false });
 
 const dietPlanSchema = new mongoose.Schema({
     name: {
@@ -26,19 +26,19 @@ const dietPlanSchema = new mongoose.Schema({
         default: 'all'
     },
     breakfast: {
-        veg: mealPlanSchema,
-        non_veg: mealPlanSchema,
-        vegan: mealPlanSchema
+        veg: [mealItemSchema],
+        non_veg: [mealItemSchema],
+        vegan: [mealItemSchema]
     },
     lunch: {
-        veg: mealPlanSchema,
-        non_veg: mealPlanSchema,
-        vegan: mealPlanSchema
+        veg: [mealItemSchema],
+        non_veg: [mealItemSchema],
+        vegan: [mealItemSchema]
     },
     dinner: {
-        veg: mealPlanSchema,
-        non_veg: mealPlanSchema,
-        vegan: mealPlanSchema
+        veg: [mealItemSchema],
+        non_veg: [mealItemSchema],
+        vegan: [mealItemSchema]
     },
     water: {
         type: Number,

@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+// Disable strictPopulate globally to allow complex nested population across all models
+mongoose.set('strictPopulate', false);
+
 const connect = async () => {
   try {
     const mongoURI = process.env.MONGO_URI;

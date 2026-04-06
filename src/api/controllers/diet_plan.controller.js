@@ -15,15 +15,10 @@ class DietPlanController {
 
             const dietPlans = await DietPlan.find(filter)
                 .populate('health_issues')
-                .populate('breakfast.veg.food_id')
-                .populate('breakfast.non_veg.food_id')
-                .populate('breakfast.vegan.food_id')
-                .populate('lunch.veg.food_id')
-                .populate('lunch.non_veg.food_id')
-                .populate('lunch.vegan.food_id')
-                .populate('dinner.veg.food_id')
-                .populate('dinner.non_veg.food_id')
-                .populate('dinner.vegan.food_id');
+                .populate({
+                    path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
+                    options: { strictPopulate: false }
+                });
             return res.status(200).json(ApiResponse.success('Diet plans retrieved successfully', dietPlans));
         } catch (error) {
             return res.status(500).json(ApiResponse.error(error.message));
@@ -38,15 +33,10 @@ class DietPlanController {
 
             const dietPlan = await DietPlan.findById(id)
                 .populate('health_issues')
-                .populate('breakfast.veg.food_id')
-                .populate('breakfast.non_veg.food_id')
-                .populate('breakfast.vegan.food_id')
-                .populate('lunch.veg.food_id')
-                .populate('lunch.non_veg.food_id')
-                .populate('lunch.vegan.food_id')
-                .populate('dinner.veg.food_id')
-                .populate('dinner.non_veg.food_id')
-                .populate('dinner.vegan.food_id');
+                .populate({
+                    path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
+                    options: { strictPopulate: false }
+                });
             if (!dietPlan) return res.status(404).json(ApiResponse.error('Diet plan not found'));
             return res.status(200).json(ApiResponse.success('Diet plan retrieved successfully', dietPlan));
         } catch (error) {

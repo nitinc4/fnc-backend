@@ -118,11 +118,17 @@ class ProfileController {
                 }).populate({
                     path: 'diet_plans',
                     select: '-__v',
-                    populate: {
-                        path: 'breakfast lunch dinner',
-                        select: '-__v',
-                        populate: { path: 'food_id', select: '-__v' }
-                    }
+                    populate: [
+                        { path: 'breakfast.veg.food_id' },
+                        { path: 'breakfast.non_veg.food_id' },
+                        { path: 'breakfast.vegan.food_id' },
+                        { path: 'lunch.veg.food_id' },
+                        { path: 'lunch.non_veg.food_id' },
+                        { path: 'lunch.vegan.food_id' },
+                        { path: 'dinner.veg.food_id' },
+                        { path: 'dinner.non_veg.food_id' },
+                        { path: 'dinner.vegan.food_id' }
+                    ]
                 }).lean(); 
 
             if (!existingUserProfile) {

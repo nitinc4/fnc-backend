@@ -39,12 +39,24 @@ const productSchema = new mongoose.Schema({
         type: String,
         unique: true,
         sparse: true
+    },
+    product_id: {
+        type: String,
+        unique: true,
+        sparse: true
     }
 }, {
     timestamps: true
 });
 
-productSchema.pre('save', function(next) {
+productSchema.pre('save', async function(next) {
+    if (!this.product_id) {
+        // Simple human-readable ID generation (PROD-XXXX)
+        // For production, consider checking for unique conflicts if using a small random pool
+        const randomHex = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0');
+        this.product_id = `PROD-${randomHex}`;
+    }
+
     if (!this.product_url) {
         // Generate a unique placeholder to satisfy the legacy index
         this.product_url = `legacy_index_bypass_${this._id}_${Date.now()}`;

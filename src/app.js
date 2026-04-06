@@ -20,6 +20,7 @@ import consultationRoute from "./api/routes/consultation.route.js";
 import adminClaimRoute from "./api/routes/admin_claim.route.js";
 import productRouter from './api/routes/product.route.js';
 import fatSecretRoute from './api/routes/fatsecret.route.js';
+import productReviewRoute from "./api/routes/product_review.route.js";
 
 import webRouter from './web/web.js';
 import multer from "multer";
@@ -100,6 +101,7 @@ app.use(`/api/consultations`, authenticateRequest, consultationRoute);
 app.use(`/admin/api/claims`, authenticateRequest, adminClaimRoute);
 
 app.use(`${api}/fatsecret`, authenticateRequest, fatSecretRoute);
+app.use(`${api}/product-reviews`, productReviewRoute);
 
 
 export default app;

@@ -474,7 +474,7 @@ class DailyDietController {
             }).populate(
                 {
 
-                    path: 'breakfast.food_id  lunch.food_id  dinner.food_id',
+                    path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
                     populate: 'meals nutrients.nutrient_id'
                 });
         } else {
@@ -486,7 +486,7 @@ class DailyDietController {
                 }
             }).populate(
                 {
-                    path: 'breakfast.food_id  lunch.food_id  dinner.food_id',
+                    path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
                     populate: 'meals nutrients.nutrient_id'
                 });
 
@@ -497,7 +497,7 @@ class DailyDietController {
         const dietPlans = await UserProfile.findOne({user_id: user_id}).populate({
             path: 'diet_plans',
             populate: {
-                path: 'breakfast.food_id lunch.food_id dinner.food_id',
+                path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
                 populate: 'meals nutrients.nutrient_id'
             }
         })
@@ -549,6 +549,8 @@ class DailyDietController {
 
 
         if (dietPlans) {
+            const userOption = (dietPlans.dietary_option || 'veg').toLowerCase().replace(' ', '_');
+            
             if (dietPlans.diet_plans.length > 0) {
                 isDietPlanExist = true
 
@@ -572,62 +574,35 @@ class DailyDietController {
                         }
                     }
 
-                    //breakfast
-                    if (Array.isArray(dietPlan.breakfast)) {
-                        //get timing
-                        for (let food of dietPlan.breakfast) {
-                            if (!food || !food.food_id) continue;
-
-                            //calculate nutrients
-                            addPlanNutrient(food)
-
-                            //calculate calories
-                            let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
-                            dietPlanBreakfastCal += food.quantity * foodCalPerGm
-                            food.total_calories = Math.round(food.quantity * foodCalPerGm)
-
-                            const foodItem = Object.assign(food._doc, {
-                                total_calories: Math.round(food.quantity * foodCalPerGm),
-                            })
-                            dietPlanBreakfastList.push(foodItem)
+                    // Unified Meal Processing
+                    const processMeal = (mealObj, targetList, targetCalRef) => {
+                        const foods = mealObj[userOption] || mealObj['veg'] || [];
+                        if (Array.isArray(foods)) {
+                            for (let food of foods) {
+                                if (!food || !food.food_id) continue;
+                                addPlanNutrient(food);
+                                let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100);
+                                let itemCal = food.quantity * foodCalPerGm;
+                                targetCalRef.val += itemCal;
+                                const foodItem = Object.assign(food._doc || food, {
+                                    total_calories: Math.round(itemCal),
+                                });
+                                targetList.push(foodItem);
+                            }
                         }
-                    }
+                    };
 
-                  
+                    let breakfastRef = { val: dietPlanBreakfastCal };
+                    processMeal(dietPlan.breakfast, dietPlanBreakfastList, breakfastRef);
+                    dietPlanBreakfastCal = breakfastRef.val;
 
-                    //lunch
-                    if (Array.isArray(dietPlan.lunch)) {
-                        for (let food of dietPlan.lunch) {
-                            if (!food || !food.food_id) continue;
+                    let lunchRef = { val: dietPlanLunchCal };
+                    processMeal(dietPlan.lunch, dietPlanLunchList, lunchRef);
+                    dietPlanLunchCal = lunchRef.val;
 
-                            //calculate nutrients
-                            addPlanNutrient(food)
-
-                            //calculate calories
-                            let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
-                            dietPlanLunchCal += food.quantity * foodCalPerGm
-                            const foodItem = Object.assign(food._doc, {total_calories: Math.round(food.quantity * foodCalPerGm)})
-                            dietPlanLunchList.push(foodItem)
-                        }
-                    }
-
-             
-
-                    //dinner
-                    if (Array.isArray(dietPlan.dinner)) {
-                        for (let food of dietPlan.dinner) {
-                            if (!food || !food.food_id) continue;
-
-                            //calculate nutrients
-                            addPlanNutrient(food)
-
-                            //calculate calories
-                            let foodCalPerGm = (food.food_id.calories_per_quantity || 0) / (food.food_id.nutrients_per_quantity || 100)
-                            dietPlanDinnerCal += food.quantity * foodCalPerGm
-                            const foodItem = Object.assign(food._doc, {total_calories: Math.round(food.quantity * foodCalPerGm)})
-                            dietPlanDinnerList.push(foodItem)
-                        }
-                    }
+                    let dinnerRef = { val: dietPlanDinnerCal };
+                    processMeal(dietPlan.dinner, dietPlanDinnerList, dinnerRef);
+                    dietPlanDinnerCal = dinnerRef.val;
 
                 }
             }

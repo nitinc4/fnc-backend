@@ -17,7 +17,8 @@ class DietPlanController {
                 .populate('health_issues')
                 .populate({
                     path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
-                    options: { strictPopulate: false }
+                    options: { strictPopulate: false },
+                    populate: { path: 'nutrients.nutrient_id' }
                 });
             return res.status(200).json(ApiResponse.success('Diet plans retrieved successfully', dietPlans));
         } catch (error) {
@@ -35,7 +36,8 @@ class DietPlanController {
                 .populate('health_issues')
                 .populate({
                     path: 'breakfast.veg.food_id breakfast.non_veg.food_id breakfast.vegan.food_id lunch.veg.food_id lunch.non_veg.food_id lunch.vegan.food_id dinner.veg.food_id dinner.non_veg.food_id dinner.vegan.food_id',
-                    options: { strictPopulate: false }
+                    options: { strictPopulate: false },
+                    populate: { path: 'nutrients.nutrient_id' }
                 });
             if (!dietPlan) return res.status(404).json(ApiResponse.error('Diet plan not found'));
             return res.status(200).json(ApiResponse.success('Diet plan retrieved successfully', dietPlan));

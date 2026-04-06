@@ -124,18 +124,18 @@ class ProfileController {
                 .populate({
                     path: 'diet_plans',
                     select: '-__v',
-                    options: { strictPopulate: false }, // Necessary for nested population of food items
+                    options: { strictPopulate: false }, 
                     populate: [
                         { path: 'created_by', select: 'name email _id image_url' },
-                        { path: 'breakfast.veg.food_id' },
-                        { path: 'breakfast.non_veg.food_id' },
-                        { path: 'breakfast.vegan.food_id' },
-                        { path: 'lunch.veg.food_id' },
-                        { path: 'lunch.non_veg.food_id' },
-                        { path: 'lunch.vegan.food_id' },
-                        { path: 'dinner.veg.food_id' },
-                        { path: 'dinner.non_veg.food_id' },
-                        { path: 'dinner.vegan.food_id' }
+                        { path: 'breakfast.veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'breakfast.non_veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'breakfast.vegan.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'lunch.veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'lunch.non_veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'lunch.vegan.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'dinner.veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'dinner.non_veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                        { path: 'dinner.vegan.food_id', populate: { path: 'nutrients.nutrient_id' } }
                     ]
                 }).lean();
 

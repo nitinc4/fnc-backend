@@ -472,7 +472,8 @@ class DailyDietController {
                 },
             }).populate({
                 path: 'breakfast.food_id lunch.food_id dinner.food_id',
-                options: { strictPopulate: false }
+                options: { strictPopulate: false },
+                populate: { path: 'nutrients.nutrient_id' }
             });
         } else {
             userDiet = await DailyDiet.findOne({
@@ -483,7 +484,8 @@ class DailyDietController {
                 }
             }).populate({
                 path: 'breakfast.food_id lunch.food_id dinner.food_id',
-                options: { strictPopulate: false }
+                options: { strictPopulate: false },
+                populate: { path: 'nutrients.nutrient_id' }
             });
         }
 
@@ -493,15 +495,15 @@ class DailyDietController {
             path: 'diet_plans',
             options: { strictPopulate: false },
             populate: [
-                { path: 'breakfast.veg.food_id' },
-                { path: 'breakfast.non_veg.food_id' },
-                { path: 'breakfast.vegan.food_id' },
-                { path: 'lunch.veg.food_id' },
-                { path: 'lunch.non_veg.food_id' },
-                { path: 'lunch.vegan.food_id' },
-                { path: 'dinner.veg.food_id' },
-                { path: 'dinner.non_veg.food_id' },
-                { path: 'dinner.vegan.food_id' }
+                { path: 'breakfast.veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'breakfast.non_veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'breakfast.vegan.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'lunch.veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'lunch.non_veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'lunch.vegan.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'dinner.veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'dinner.non_veg.food_id', populate: { path: 'nutrients.nutrient_id' } },
+                { path: 'dinner.vegan.food_id', populate: { path: 'nutrients.nutrient_id' } }
             ]
         })
 

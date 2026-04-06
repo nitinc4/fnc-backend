@@ -1,5 +1,10 @@
 import mongoose from "mongoose";
 
+const mealPlanSchema = [{
+    food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
+    quantity: { type: Number, default: 1 }
+}];
+
 const dietPlanSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -12,26 +17,29 @@ const dietPlanSchema = new mongoose.Schema({
     }],
     variant: {
         type: String,
-        enum: ['weight loss', 'weight gain', 'maintain weight'],
-        default: 'maintain weight'
+        enum: ['Weight Loss', 'Weight Gain', 'Weight Maintenance'],
+        default: 'Weight Maintenance'
     },
     dietary_option: {
         type: String,
-        enum: ['veg', 'non veg', 'vegan'],
-        default: 'veg'
+        enum: ['veg', 'non veg', 'vegan', 'all'],
+        default: 'all'
     },
-    breakfast: [{
-        food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
-        quantity: { type: Number, default: 1 }
-    }],
-    lunch: [{
-        food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
-        quantity: { type: Number, default: 1 }
-    }],
-    dinner: [{
-        food_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Food' },
-        quantity: { type: Number, default: 1 }
-    }],
+    breakfast: {
+        veg: mealPlanSchema,
+        non_veg: mealPlanSchema,
+        vegan: mealPlanSchema
+    },
+    lunch: {
+        veg: mealPlanSchema,
+        non_veg: mealPlanSchema,
+        vegan: mealPlanSchema
+    },
+    dinner: {
+        veg: mealPlanSchema,
+        non_veg: mealPlanSchema,
+        vegan: mealPlanSchema
+    },
     water: {
         type: Number,
         default: 10

@@ -15,9 +15,15 @@ class DietPlanController {
 
             const dietPlans = await DietPlan.find(filter)
                 .populate('health_issues')
-                .populate('breakfast.food_id')
-                .populate('lunch.food_id')
-                .populate('dinner.food_id');
+                .populate('breakfast.veg.food_id')
+                .populate('breakfast.non_veg.food_id')
+                .populate('breakfast.vegan.food_id')
+                .populate('lunch.veg.food_id')
+                .populate('lunch.non_veg.food_id')
+                .populate('lunch.vegan.food_id')
+                .populate('dinner.veg.food_id')
+                .populate('dinner.non_veg.food_id')
+                .populate('dinner.vegan.food_id');
             return res.status(200).json(ApiResponse.success('Diet plans retrieved successfully', dietPlans));
         } catch (error) {
             return res.status(500).json(ApiResponse.error(error.message));
@@ -32,9 +38,15 @@ class DietPlanController {
 
             const dietPlan = await DietPlan.findById(id)
                 .populate('health_issues')
-                .populate('breakfast.food_id')
-                .populate('lunch.food_id')
-                .populate('dinner.food_id');
+                .populate('breakfast.veg.food_id')
+                .populate('breakfast.non_veg.food_id')
+                .populate('breakfast.vegan.food_id')
+                .populate('lunch.veg.food_id')
+                .populate('lunch.non_veg.food_id')
+                .populate('lunch.vegan.food_id')
+                .populate('dinner.veg.food_id')
+                .populate('dinner.non_veg.food_id')
+                .populate('dinner.vegan.food_id');
             if (!dietPlan) return res.status(404).json(ApiResponse.error('Diet plan not found'));
             return res.status(200).json(ApiResponse.success('Diet plan retrieved successfully', dietPlan));
         } catch (error) {

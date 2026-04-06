@@ -31,7 +31,7 @@ async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user, user
     const isPaidPlan = user && user.plan && user.plan.toLowerCase() === 'paid';
     let finalPlanIds = [];
 
-    const variant = userProfileData.variant?.toLowerCase() || 'maintain weight';
+    const variant = userProfileData.variant || 'Weight Maintenance';
 
     // 1. Paid Users get specific plans
     if (isPaidPlan) {
@@ -63,16 +63,13 @@ async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user, user
     if (finalPlanIds.length === 0) {
         const matchingPlan = await DietPlan.findOne({
             variant: variant,
-            $or: [
-                { name: { $regex: /general/i } },
-                { name: { $regex: /unified/i } }
-            ]
+            name: { $regex: /general/i }
         });
         if (matchingPlan) {
             finalPlanIds.push(matchingPlan._id);
         } else {
             // Ultimate fallback: Any general plan
-            const generalPlan = await DietPlan.findOne({name: { $regex: /general/i }});
+            const generalPlan = await DietPlan.findOne({name: { $regex: /General/i }});
             if (generalPlan) finalPlanIds.push(generalPlan._id);
         }
     }
@@ -159,13 +156,13 @@ class ProfileController {
                 if (healthIssue) healthIssuesList.push(healthIssue._id)
             }
 
-            let calculatedVariant = extractStr(req.body.variant)?.toLowerCase() || 'maintain weight';
+            let calculatedVariant = extractStr(req.body.variant) || 'Weight Maintenance';
             const curWeight = extractNum(weight);
             const targetWeight = extractNum(target_weight);
             if (curWeight && targetWeight) {
-                if (curWeight > targetWeight + 0.5) calculatedVariant = 'weight loss';
-                else if (curWeight < targetWeight - 0.5) calculatedVariant = 'weight gain';
-                else calculatedVariant = 'maintain weight';
+                if (curWeight > targetWeight + 0.5) calculatedVariant = 'Weight Loss';
+                else if (curWeight < targetWeight - 0.5) calculatedVariant = 'Weight Gain';
+                else calculatedVariant = 'Weight Maintenance';
             }
 
             const assignedDietPlanIds = await resolveDietPlans(healthIssuesList, diet_plans, user, {
@@ -274,11 +271,11 @@ class ProfileController {
                 existingUserProfile.has_social_discount = req.body.has_social_discount;
             }
 
-            let calculatedVariant = (existingUserProfile.variant || 'maintain weight').toLowerCase();
+            let calculatedVariant = existingUserProfile.variant || 'Weight Maintenance';
             if (existingUserProfile.weight && existingUserProfile.target_weight) {
-                if (existingUserProfile.weight > existingUserProfile.target_weight + 0.5) calculatedVariant = 'weight loss';
-                else if (existingUserProfile.weight < existingUserProfile.target_weight - 0.5) calculatedVariant = 'weight gain';
-                else calculatedVariant = 'maintain weight';
+                if (existingUserProfile.weight > existingUserProfile.target_weight + 0.5) calculatedVariant = 'Weight Loss';
+                else if (existingUserProfile.weight < existingUserProfile.target_weight - 0.5) calculatedVariant = 'Weight Gain';
+                else calculatedVariant = 'Weight Maintenance';
             }
             existingUserProfile.variant = calculatedVariant;
 

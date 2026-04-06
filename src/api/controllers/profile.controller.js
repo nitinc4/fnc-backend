@@ -25,6 +25,32 @@ const extractId = (val) => {
     if (typeof val === 'object') return val._id || val.id || val;
     return String(val);
 };
+
+// Robust Resolver for Health Issues (Handles IDs or Names)
+async function resolveHealthIssuesList(inputList) {
+    if (!inputList || !Array.isArray(inputList)) return [];
+    let resolvedIds = [];
+    for (let item of inputList) {
+        const idOrName = extractId(item);
+        if (!idOrName) continue;
+        
+        // Try ID Lookup
+        if (mongoose.Types.ObjectId.isValid(idOrName)) {
+            const issue = await HealthIssue.findById(idOrName);
+            if (issue) {
+                resolvedIds.push(issue._id);
+                continue;
+            }
+        }
+
+        // Try Name Lookup (Case-Insensitive)
+        const issueByName = await HealthIssue.findOne({ name: { $regex: new RegExp(`^${idOrName}$`, 'i') } });
+        if (issueByName) {
+            resolvedIds.push(issueByName._id);
+        }
+    }
+    return resolvedIds;
+}
 // -------------------------------
 
 async function resolveDietPlans(healthIssueIds, requestedDietPlanIds, user, userProfileData = {}) {
@@ -148,13 +174,7 @@ class ProfileController {
             if (name) user.name = extractStr(name);
             await user.save()
 
-            let healthIssuesList = []
-            for (let issue of health_issues) {
-                const issueId = extractId(issue);
-                if (mongoose.Types.ObjectId.isValid(issueId) === false) continue;
-                const healthIssue = await HealthIssue.findById(issueId)
-                if (healthIssue) healthIssuesList.push(healthIssue._id)
-            }
+            let healthIssuesList = await resolveHealthIssuesList(health_issues);
 
             let calculatedVariant = extractStr(req.body.variant) || 'Weight Maintenance';
             const curWeight = extractNum(weight);
@@ -254,15 +274,7 @@ class ProfileController {
             if (country) existingUserProfile.country = extractStr(country);
 
             if (health_issues) {
-                if (!Array.isArray(health_issues)) return res.status(400).json(ApiResponse.error('{ health_issues } must be an array'))
-                let healthIssuesList = []
-                for (let issue of health_issues) {
-                    const issueId = extractId(issue);
-                    if (mongoose.Types.ObjectId.isValid(issueId) === false) continue;
-                    const healthIssue = await HealthIssue.findById(issueId)
-                    if (healthIssue) healthIssuesList.push(healthIssue._id)
-                }
-                existingUserProfile.health_issues = healthIssuesList
+                existingUserProfile.health_issues = await resolveHealthIssuesList(health_issues);
             }
 
             if (variant) existingUserProfile.variant = extractStr(variant);

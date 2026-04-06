@@ -26,6 +26,16 @@ const extractId = (val) => {
     return String(val);
 };
 
+// --- CASE NORMALIZATION ---
+const normalizeVariant = (val) => {
+    if (!val) return val;
+    const str = extractStr(val).toLowerCase();
+    if (str === 'weight loss') return 'Weight Loss';
+    if (str === 'weight gain') return 'Weight Gain';
+    if (str === 'weight maintenance') return 'Weight Maintenance';
+    return val;
+};
+
 // Robust Resolver for Health Issues (Handles IDs or Names)
 async function resolveHealthIssuesList(inputList) {
     if (!inputList || !Array.isArray(inputList)) return [];
@@ -182,7 +192,7 @@ class ProfileController {
 
             let healthIssuesList = await resolveHealthIssuesList(health_issues);
 
-            let calculatedVariant = extractStr(req.body.variant) || 'Weight Maintenance';
+            let calculatedVariant = normalizeVariant(req.body.variant) || 'Weight Maintenance';
             const curWeight = extractNum(weight);
             const targetWeight = extractNum(target_weight);
             if (curWeight && targetWeight) {
@@ -283,7 +293,7 @@ class ProfileController {
                 existingUserProfile.health_issues = await resolveHealthIssuesList(health_issues);
             }
 
-            if (variant) existingUserProfile.variant = extractStr(variant);
+            if (variant) existingUserProfile.variant = normalizeVariant(variant);
             if (dietary_option) existingUserProfile.dietary_option = extractStr(dietary_option);
             if (req.body.has_social_discount !== undefined) {
                 existingUserProfile.has_social_discount = req.body.has_social_discount;
